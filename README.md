@@ -60,7 +60,7 @@ GATK_VARIANTCALL    Germline SNP/INDEL calling, CpG-masked, scatter-gather (GATK
 
 - **Nextflow** ≥ 24.04.2
 - **Singularity** (all processes run in containers; Docker or Apptainer also supported)
-- **SLURM** (configured for JAX Elion cluster; other executors require config changes)
+- **SLURM** (configured for JAX clusters; other executors require config changes)
 
 ---
 
@@ -203,3 +203,6 @@ See [docs/benchmarking_vcfs.md](docs/benchmarking_vcfs.md) for full benchmarking
 The JAX-GT pipeline was developed by the JAX Genome Technologies bioinformatics team, built on
 top of [nf-core/fastquorum](https://nf-co.re/fastquorum) (Nils Homer & Zach Norgaard,
 Fulcrum Genomics) and [rastair](https://github.com/sbludwig/rastair) (Etzioni et al., bioRxiv 2026).
+The TAPS methylation conversion subworkflow (`subworkflows/nf-core/bam_taps_conversion`) is
+adapted from [nf-core/methylseq](https://nf-co.re/methylseq) (Phil Ewels et al.;
+doi:[10.5281/zenodo.1343417](https://doi.org/10.5281/zenodo.1343417)).
