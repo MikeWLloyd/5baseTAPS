@@ -41,6 +41,7 @@ The top table gives one row per sample with the most important cross-tool metric
 | % Aligned | samtools flagstat (pre-dedup) | % of primary reads aligned |
 | Mean depth | mosdepth | Mean WGS coverage |
 | Median depth | mosdepth | Median WGS coverage |
+| ≥ 10x | mosdepth | % of bases covered at ≥ 10× |
 | ≥ 30x | mosdepth | % of bases covered at ≥ 30× |
 | Max coverage | mosdepth | Peak depth (useful for detecting high-coverage outlier regions) |
 | Variants | bcftools | Total PASS variants (SNPs + INDELs) |
@@ -108,6 +109,7 @@ Bar chart showing the fraction of duplex (DS) families at each UMI family size (
 |--------|----------|---------------|
 | Mean depth | 30–50× for WGS | < 20×: low input or poor library; > 100×: verify not contaminated with spike-in |
 | ≥ 1x % | > 95% | < 90%: significant uncovered regions — check adapter content, reference mismatch |
+| ≥ 5x % | > 90% for 30× runs | — |
 | ≥ 10x % | > 80% for 30× runs | — |
 | ≥ 20x % | > 60% for 30× runs | — |
 | chrX depth | ~0.5× of autosomes (XY sample) or ~1× (XX sample) | Use to infer sample sex; unexpected values may indicate sample swap |

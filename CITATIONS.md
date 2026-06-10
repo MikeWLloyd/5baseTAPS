@@ -1,4 +1,4 @@
-# nf-core/fastquorum: Citations
+# 5baseTAPS: Citations
 
 ## [nf-core](https://pubmed.ncbi.nlm.nih.gov/32055031/)
 
@@ -7,6 +7,16 @@
 ## [Nextflow](https://pubmed.ncbi.nlm.nih.gov/28398311/)
 
 > Di Tommaso P, Chatzou M, Floden EW, Barja PP, Palumbo E, Notredame C. Nextflow enables reproducible computational workflows. Nat Biotechnol. 2017 Apr 11;35(4):316-319. doi: 10.1038/nbt.3820. PubMed PMID: 28398311.
+
+## Upstream pipelines
+
+- [nf-core/fastquorum](https://github.com/nf-core/fastquorum)
+
+  > Homer N, Norgaard Z, et al. nf-core/fastquorum. GitHub. https://github.com/nf-core/fastquorum
+
+- [nf-core/methylseq](https://github.com/nf-core/methylseq)
+
+  > Ewels P, et al. nf-core/methylseq. GitHub. https://github.com/nf-core/methylseq
 
 ## Pipeline tools
 
@@ -18,9 +28,17 @@
 
 > Andrews, S. (2010). FastQC: A Quality Control Tool for High Throughput Sequence Data [Online].
 
+- [GATK HaplotypeCaller](https://pubmed.ncbi.nlm.nih.gov/20644199/)
+
+  > McKenna A, Hanna M, Banks E, Sivachenko A, Cibulskis K, Kernytsky A, Garimella K, Altshuler D, Gabriel S, Daly M, DePristo MA. The Genome Analysis Toolkit: A MapReduce framework for analyzing next-generation DNA sequencing data. Genome Res. 2010 Sep;20(9):1297-303. doi: 10.1101/gr.107524.110. PubMed PMID: 20644199.
+
 - [FGBio](https://github.com/fulcrumgenomics/fgbio)
 
   > Homer N, Fennell T, et al. (2024). fulcrumgenomics/fgbio: Release 2.2.1 (2.2.1). Zenodo. https://doi.org/10.5281/zenodo.10456901
+
+- [rastair](https://www.rastair.com/)
+
+  > Etzioni Z, Zhao L, Hertleif P, Schuster-Böckler B. Rastair: an integrated variant and methylation caller. bioRxiv. 2026 Mar 19. doi: 10.1101/2026.03.19.712983
 
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 

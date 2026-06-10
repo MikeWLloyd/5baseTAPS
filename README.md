@@ -31,24 +31,16 @@ to run a single analysis path regardless of library chemistry.
 
 ### Workflow
 
-The pipeline is structured as three collaborating Nextflow workflows:
-
-```
-FASTQUORUM          UMI extraction → alignment → consensus calling (fgbio)
-RASTAIR_METHYLSEQ   CpG methylation calling + M-bias QC + methylation controls (rastair)
-GATK_VARIANTCALL    Germline SNP/INDEL calling, CpG-masked, scatter-gather (GATK HC)
-```
-
 **Step-by-step:**
 
 1. Raw read QC ([FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
-2. Chunked alignment of raw FASTQs for large samples ([seqkit](https://bioinf.shenwei.me/seqkit/) + [bwa-mem2](https://github.com/bwa-mem2/bwa-mem2))
+2. [Optional] Chunked alignment of raw FASTQs for large samples ([seqkit](https://bioinf.shenwei.me/seqkit/) + [bwa-mem2](https://github.com/bwa-mem2/bwa-mem2))
 3. UMI extraction and grouping ([fgbio FastqToBam](http://fulcrumgenomics.github.io/fgbio/), [GroupReadsByUmi](http://fulcrumgenomics.github.io/fgbio/tools/latest/GroupReadsByUmi.html))
 4. Duplex consensus calling and filtering ([fgbio CallDuplexConsensusReads](http://fulcrumgenomics.github.io/fgbio/tools/latest/CallDuplexConsensusReads.html), [FilterConsensusReads](http://fulcrumgenomics.github.io/fgbio/tools/latest/FilterConsensusReads.html))
 5. Duplex QC metrics ([fgbio CollectDuplexSeqMetrics](http://fulcrumgenomics.github.io/fgbio/tools/latest/CollectDuplexSeqMetrics.html))
 6. Final consensus re-alignment ([bwa-mem2](https://github.com/bwa-mem2/bwa-mem2))
-7. CpG methylation calling + per-CpG BED/VCF + per-read BED ([rastair](https://github.com/sbludwig/rastair))
-8. M-bias QC report ([rastair](https://github.com/sbludwig/rastair))
+7. CpG methylation calling + per-CpG BED/VCF + per-read BED ([rastair](https://www.rastair.com/))
+8. M-bias QC report ([rastair](https://www.rastair.com/))
 9. Lambda (negative) and pUC19 (positive) methylation control QC
 10. CpG site mask generation for GATK (derived from the rastair call BED)
 11. DRAGstr model calibration + scatter-gather SNP/INDEL calling ([GATK HaplotypeCaller](https://gatk.broadinstitute.org/))
@@ -86,14 +78,21 @@ Multi-lane rows with the same `sample` identifier are merged automatically befor
 
 ## Running the Pipeline
 
+First, clone the repository:
+
+```bash
+git clone https://github.com/TheJacksonLaboratory/5baseTAPS.git
+cd 5baseTAPS
+```
+
 ### Minimal run command
 
 ```bash
-nextflow run TheJacksonLaboratory/5baseTAPS \
+nextflow run . \
     -profile sumner2_singularity \
     --input samplesheet.csv \
     --genome CHM13 \
-    --outdir results/
+    --outdir results
 ```
 
 ### Recommended: run via SLURM head script
@@ -112,12 +111,11 @@ managed by the scheduler. Nextflow then submits each pipeline task as a separate
 #SBATCH --error=logs/%x-%j.log
 
 module load singularity nextflow
-
-nextflow run TheJacksonLaboratory/5baseTAPS \
+nextflow run . \
     -profile sumner2_singularity \
     --input samplesheet.csv \
     --genome CHM13 \
-    --outdir results/ \
+    --outdir results \
     -resume
 ```
 
@@ -128,18 +126,17 @@ nextflow run TheJacksonLaboratory/5baseTAPS \
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--input` | — | Path to samplesheet CSV (required) |
-| `--genome` | `CHM13` | Reference genome key (`CHM13` or `GRCh38`; pre-indexed on Elion) |
+| `--genome` | `CHM13` | Reference genome key (`CHM13` or `GRCh38`) |
 | `--fasta` | — | Path to reference FASTA (overrides `--genome`) |
 | `--fasta_fai` | — | Path to FASTA index (`.fai`) |
 | `--dict` | — | Path to sequence dictionary (`.dict`) |
 | `--bwamem2` | — | Path to bwa-mem2 index directory |
 | `--outdir` | — | Output directory (required) |
-| `--mode` | `rd` | Pipeline mode: `rd` (research & development) or `ht` (high throughput) |
-| `--run_gatk` | `true` | Run GATK HaplotypeCaller variant calling |
-| `--align_raw_bam_chunks` | `1` | Number of parallel alignment chunks per sample (set to 5–8 for large samples ≥100M reads for ~1.83× speedup) |
-| `--duplex_seq` | `true` | Enable duplex consensus mode (set `false` for single-strand UMI libraries) |
+| `--run_gatk` | `true` | Run GATK HaplotypeCaller variant calling; set to false for methylation only |
+| `--align_raw_bam_chunks` | `1` | Number of parallel alignment chunks applied per samplesheet row (FASTQ pair); set > 1 for high-depth FASTQ pairs (4-8) |
 | `--filter_min_reads` | `1 0 0` | Minimum reads to retain a duplex consensus (format: `AB SS DS`) |
 | `--filter_max_base_error_rate` | `0.1` | Maximum per-base error rate for consensus filtering |
+| `--duplex_seq` | `true` | Enable duplex consensus mode (set `false` for single-strand UMI libraries) |
 | `--rastair_rscript_dir` | `null` | Override rastair R scripts directory (uses bundled `assets/rastair_scripts/` by default) |
 
 ---
@@ -153,7 +150,6 @@ nextflow run TheJacksonLaboratory/5baseTAPS \
 │   ├── methylation/       — per-CpG BED/VCF, per-read BED, M-bias HTML, methylKit, summaries
 │   ├── variants/          — GATK VCFs, CpG site mask
 │   └── qc/                — per-sample QC (alignment, coverage, duplex, FastQC, variant)
-├── qc/                    — batch TAPS QC report (all samples combined)
 ├── report/                — MultiQC HTML report
 └── pipeline_info/         — Nextflow execution reports and parameter logs
 ```
@@ -202,7 +198,6 @@ See [docs/benchmarking_vcfs.md](docs/benchmarking_vcfs.md) for full benchmarking
 
 The JAX-GT pipeline was developed by the JAX Genome Technologies bioinformatics team, built on
 top of [nf-core/fastquorum](https://nf-co.re/fastquorum) (Nils Homer & Zach Norgaard,
-Fulcrum Genomics) and [rastair](https://github.com/sbludwig/rastair) (Etzioni et al., bioRxiv 2026).
-The TAPS methylation conversion subworkflow (`subworkflows/nf-core/bam_taps_conversion`) is
+Fulcrum Genomics) and the TAPS methylation conversion subworkflow 
 adapted from [nf-core/methylseq](https://nf-co.re/methylseq) (Phil Ewels et al.;
 doi:[10.5281/zenodo.1343417](https://doi.org/10.5281/zenodo.1343417)).

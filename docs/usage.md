@@ -255,7 +255,7 @@ Selects a configuration profile for your compute environment. Available profiles
 - `docker` — use Docker containers (for local development)
 - `apptainer` — use Apptainer containers
 - `conda` — use Conda environments (last resort; containers preferred)
-- Site-specific profiles (e.g. `sumner2_singularity`, `elion2_singularity`) — see `conf/` directory
+- Site-specific profiles (e.g. `sumner2_singularity`) — see `conf/` directory for all available profiles
 
 Multiple profiles can be combined: `-profile singularity,custom_config`.
 

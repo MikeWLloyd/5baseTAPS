@@ -9,7 +9,7 @@ JAX Genome Technologies offers sequencing and secondary analysis services for wh
 
 Although the two library types use distinct chemistries, both produce reads with the same base-level methylation signature: 5-methylcytosine (5mC) appears as thymine (C→T) while unmethylated cytosines are read as C. This shared read-level representation is why the same downstream bioinformatics pipeline can process data from either library type without modification.
 
-The JAX-GT Nextflow pipeline integrates frameworks from [nf-core/fastquorum](https://nf-co.re/fastquorum) and [fgbio](http://fulcrumgenomics.github.io/fgbio/) for UMI-based duplex consensus calling, [bwa-mem2](https://github.com/bwa-mem2/bwa-mem2) for genome alignment, [rastair](https://github.com/sbludwig/rastair) for CpG methylation calling, and [GATK HaplotypeCaller](https://gatk.broadinstitute.org) in DRAGEN mode for germline SNP/INDEL calling.
+The JAX-GT Nextflow pipeline integrates frameworks from [nf-core/fastquorum](https://nf-co.re/fastquorum) and [fgbio](http://fulcrumgenomics.github.io/fgbio/) for UMI-based duplex consensus calling, [bwa-mem2](https://github.com/bwa-mem2/bwa-mem2) for genome alignment, [rastair](https://www.rastair.com/) for CpG methylation calling, and [GATK HaplotypeCaller](https://gatk.broadinstitute.org) in DRAGEN mode for germline SNP/INDEL calling.
 
 **Main Steps:**
 1. Preprocessing: raw read quality (FastQC), alignment to reference genome (bwa-mem2), multi-lane merging.
@@ -20,7 +20,7 @@ The JAX-GT Nextflow pipeline integrates frameworks from [nf-core/fastquorum](htt
 
 **Supported reference genomes** (use `--genome <key>`):
 
-Pre-built (bwa-mem2 indices locally cached):
+Pre-built (bwa-mem2 indices locally cached on JAX HPC):
 * `CHM13` — Homo sapiens T2T CHM13v2 (default)
 * `GRCh38` — Homo sapiens GRCh38 / hg38 [NCBI]
 
@@ -31,6 +31,76 @@ Available via [iGenomes](https://nf-co.re/docs/usage/reference_genomes) (downloa
 * `GRCm38` — Mus musculus GRCm38 [Ensembl]
 * `mm10` — Mus musculus mm10 [UCSC]
 * and more — see [full iGenomes list](https://nf-co.re/docs/usage/reference_genomes)
+
+## Pipeline Output Structure
+
+```
+$OUTDIR/
+    ├── report/
+    │   ├── multiqc_report.html                            ← Start here
+    │   ├── multiqc_report_data/
+    │   └── multiqc_report_plots/
+    ├── <sample>/
+    │   ├── bam/
+    │   │   ├── <sample>.cons.filtered.bam                 ← Primary BAM
+    │   │   └── <sample>.cons.filtered.bam.bai
+    │   ├── methylation/
+    │   │   ├── <sample>.rastair_call.bed.gz               ← Primary methylation
+    │   │   ├── <sample>.rastair_call.vcf.gz
+    │   │   ├── <sample>.rastair_perread.bed.gz
+    │   │   ├── <sample>.rastair_perread.bed.gz.tbi
+    │   │   ├── <sample>.rastair_methylkit.txt.gz
+    │   │   ├── <sample>.rastair_mbias.html
+    │   │   ├── <sample>.methylation_summary.tsv
+    │   │   ├── <sample>.lambda_negCtrl.methylation_summary.tsv
+    │   │   └── <sample>.puc19_posCtrl.methylation_summary.tsv
+    │   ├── variants/
+    │   │   ├── <sample>.haplotypecaller.filtered-SNP.vcf.gz    ← Primary SNPs
+    │   │   ├── <sample>.haplotypecaller.filtered-SNP.vcf.gz.tbi
+    │   │   ├── <sample>.haplotypecaller.filtered-INDEL.vcf.gz
+    │   │   ├── <sample>.haplotypecaller.filtered-INDEL.vcf.gz.tbi
+    │   │   ├── <sample>.haplotypecaller.vcf.gz
+    │   │   ├── <sample>.haplotypecaller.vcf.gz.tbi
+    │   │   ├── <sample>.rastair_cpg_sites.bed.gz
+    │   │   └── <sample>.rastair_cpg_sites.bed.gz.tbi
+    │   └── qc/
+    │       ├── fastqc/
+    │       │   ├── <sample>_1_fastqc.html
+    │       │   ├── <sample>_1_fastqc.zip
+    │       │   ├── <sample>_2_fastqc.html
+    │       │   └── <sample>_2_fastqc.zip
+    │       ├── alignment/
+    │       │   ├── <sample>.prededup.flagstat
+    │       │   ├── <sample>.postdedup.flagstat
+    │       │   ├── <sample>.lambda_negCtrl.flagstat
+    │       │   └── <sample>.puc19_posCtrl.flagstat
+    │       ├── coverage/
+    │       │   ├── <sample>.mosdepth.summary.txt
+    │       │   └── <sample>.mosdepth.global.dist.txt
+    │       ├── duplex/
+    │       │   ├── <sample>.grouped-family-sizes.txt
+    │       │   ├── <sample>.duplex_seq_metrics.duplex_yield_metrics.txt
+    │       │   ├── <sample>.duplex_seq_metrics.family_sizes.txt
+    │       │   ├── <sample>.duplex_seq_metrics.duplex_family_sizes.txt
+    │       │   ├── <sample>.duplex_seq_metrics.umi_counts.txt
+    │       │   ├── <sample>.duplex_seq_metrics.duplex_umi_counts.txt
+    │       │   └── <sample>.duplex_seq_metrics.duplex_qc.pdf
+    │       ├── variant_call/
+    │       │   ├── <sample>.bcftools_stats.txt
+    │       │   └── <sample>.dragstr_model.txt
+    │       └── mqc/
+    │           ├── <sample>_read_partitioning_mqc.tsv
+    │           ├── <sample>_mapping_summary_mqc.tsv
+    │           ├── <sample>_duplex_summary_mqc.tsv
+    │           ├── <sample>_duplex_familysize_mqc.tsv
+    │           ├── <sample>_methyl_summary_mqc.tsv
+    │           ├── <sample>_methyl_controls_mqc.tsv
+    │           ├── <sample>_coverage_metrics_mqc.tsv
+    │           └── <sample>_variant_calling_mqc.tsv
+    └── pipeline_info/
+        ├── execution_trace_*.txt
+        └── params_*.json
+```
 
 ---
 
@@ -279,7 +349,7 @@ NOTE: `<s>` represents the sample ID wildcard.
 
 ### `duplex_seq_metrics.duplex_qc.pdf` — Plot Descriptions
 
-Generated by [fgbio CollectDuplexSeqMetrics](https://fulcrumgenomics.github.io/fgbio/tools/latest/CollectDuplexSeqMetrics.html). Contains **8 pages** for WGS production samples. Shallow test samples (< 30M reads) may have only 5 pages and some plots will be blank.
+Generated by [fgbio CollectDuplexSeqMetrics](https://fulcrumgenomics.github.io/fgbio/tools/latest/CollectDuplexSeqMetrics.html). Contains **8 pages** for WGS production samples.
 
 **Terminology:**
 
@@ -376,78 +446,6 @@ Three curves (CS, DS, SS) plotted as **total reads allocated to families of size
 
 ---
 
-## Pipeline Output Structure
-
-```
-$OUTDIR/
-    ├── report/
-    │   ├── multiqc_report.html                            ← Start here
-    │   ├── multiqc_report_data/
-    │   └── multiqc_report_plots/
-    ├── <sample>/
-    │   ├── bam/
-    │   │   ├── <sample>.cons.filtered.bam                 ← Primary BAM
-    │   │   └── <sample>.cons.filtered.bam.bai
-    │   ├── methylation/
-    │   │   ├── <sample>.rastair_call.bed.gz               ← Primary methylation
-    │   │   ├── <sample>.rastair_call.vcf.gz
-    │   │   ├── <sample>.rastair_perread.bed.gz
-    │   │   ├── <sample>.rastair_perread.bed.gz.tbi
-    │   │   ├── <sample>.rastair_methylkit.txt.gz
-    │   │   ├── <sample>.rastair_mbias.html
-    │   │   ├── <sample>.methylation_summary.tsv
-    │   │   ├── <sample>.lambda_negCtrl.methylation_summary.tsv
-    │   │   └── <sample>.puc19_posCtrl.methylation_summary.tsv
-    │   ├── variants/
-    │   │   ├── <sample>.haplotypecaller.filtered-SNP.vcf.gz    ← Primary SNPs
-    │   │   ├── <sample>.haplotypecaller.filtered-SNP.vcf.gz.tbi
-    │   │   ├── <sample>.haplotypecaller.filtered-INDEL.vcf.gz
-    │   │   ├── <sample>.haplotypecaller.filtered-INDEL.vcf.gz.tbi
-    │   │   ├── <sample>.haplotypecaller.vcf.gz
-    │   │   ├── <sample>.haplotypecaller.vcf.gz.tbi
-    │   │   ├── <sample>.rastair_cpg_sites.bed.gz
-    │   │   └── <sample>.rastair_cpg_sites.bed.gz.tbi
-    │   └── qc/
-    │       ├── fastqc/
-    │       │   ├── <sample>_1_fastqc.html
-    │       │   ├── <sample>_1_fastqc.zip
-    │       │   ├── <sample>_2_fastqc.html
-    │       │   └── <sample>_2_fastqc.zip
-    │       ├── alignment/
-    │       │   ├── <sample>.prededup.flagstat
-    │       │   ├── <sample>.postdedup.flagstat
-    │       │   ├── <sample>.lambda_negCtrl.flagstat
-    │       │   └── <sample>.puc19_posCtrl.flagstat
-    │       ├── coverage/
-    │       │   ├── <sample>.mosdepth.summary.txt
-    │       │   └── <sample>.mosdepth.global.dist.txt
-    │       ├── duplex/
-    │       │   ├── <sample>.grouped-family-sizes.txt
-    │       │   ├── <sample>.duplex_seq_metrics.duplex_yield_metrics.txt
-    │       │   ├── <sample>.duplex_seq_metrics.family_sizes.txt
-    │       │   ├── <sample>.duplex_seq_metrics.duplex_family_sizes.txt
-    │       │   ├── <sample>.duplex_seq_metrics.umi_counts.txt
-    │       │   ├── <sample>.duplex_seq_metrics.duplex_umi_counts.txt
-    │       │   └── <sample>.duplex_seq_metrics.duplex_qc.pdf
-    │       ├── variant_call/
-    │       │   ├── <sample>.bcftools_stats.txt
-    │       │   └── <sample>.dragstr_model.txt
-    │       └── mqc/
-    │           ├── <sample>_read_partitioning_mqc.tsv
-    │           ├── <sample>_mapping_summary_mqc.tsv
-    │           ├── <sample>_duplex_summary_mqc.tsv
-    │           ├── <sample>_duplex_familysize_mqc.tsv
-    │           ├── <sample>_methyl_summary_mqc.tsv
-    │           ├── <sample>_methyl_controls_mqc.tsv
-    │           ├── <sample>_coverage_metrics_mqc.tsv
-    │           └── <sample>_variant_calling_mqc.tsv
-    └── pipeline_info/
-        ├── execution_trace_*.txt
-        └── params_*.json
-```
-
----
-
 ## 5baseTAPS Pipeline Generated Files
 
 | Output File | Folder | Description |
@@ -490,7 +488,3 @@ NOTE: `<s>` is a placeholder for the sample ID.
 
 ---
 
-**Change History**
-
-* _June 5, 2026_  Output structure refactored to sample-centric layout (`<sample>/bam|methylation|variants|qc/`); rastair_cpg_sites.bed.gz added; rastair_call.bed.gz coverage clarified (≥ 1, no zero-coverage sites); BED column 15 corrected (NEW not SNP); methylkit filename corrected to rastair_methylkit.txt.gz
-* _June 4, 2026_  Initial version

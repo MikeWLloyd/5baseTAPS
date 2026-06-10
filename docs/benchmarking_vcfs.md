@@ -194,3 +194,7 @@ Methylation at each CpG site is expressed as a beta value β ∈ [0, 1], where 0
 4. **GATK and rastair agree at 95% F1** at non-CpG positions (Arm 4, both CpG-masked), confirming high caller concordance where methylation ambiguity is removed.
 5. **Methylation R² = 98.1%** at 54.6M shared reference CpGs confirms near-perfect genome-wide concordance. Mean bias of +0.16 pp (DRAGEN slightly higher) matches the paper's observation of residual uncorrected het C→T sites in DRAGEN's CX_report.
 6. **The F1 gap is driven by DRAGEN's `Somatic` tier.** 96.5% of DRAGEN PASS SNPs are `Germline_DB`; rastair and GATK achieve a FN rate of only ~2.1% on these. The remaining 3.5% (`Somatic` — rare/novel variants absent from the germline DB) carry a ~21–23% FN rate and account for ~27–29% of all FNs. Without a matched normal, DRAGEN cannot distinguish true somatic from rare germline; these discordant calls may reflect DRAGEN false positives rather than rastair/GATK sensitivity gaps.
+
+---
+
+**See also — independent benchmarking with GIAB truth set:** The rastair team benchmarks rastair vs. DRAGEN 5-base on NA12878 (GIAB truth set) and reports rastair F1 = 0.906 vs. DRAGEN F1 = 0.899 — rastair slightly outperforms DRAGEN when orthogonal ground truth is available. Our whole-genome caller-to-caller concordance of 94.4% is consistent with this result. See [rastair.com](https://www.rastair.com/) for details.
