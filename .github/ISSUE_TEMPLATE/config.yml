@@ -1,0 +1,7 @@
+contact_links:
+  - name: JAX-GT/5baseTAPS documentation
+    url: https://github.com/TheJacksonLaboratory/5baseTAPS/tree/master/docs
+    about: Pipeline documentation and usage guides
+  - name: Report a bug or request a feature
+    url: https://github.com/TheJacksonLaboratory/5baseTAPS/issues
+    about: Open an issue on GitHub

@@ -1,0 +1,504 @@
+---
+title: "Rastair Methylation Bias Report"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    theme: united
+params:
+  threads: 1
+  input_bgz: NULL
+  input_vcf: NULL
+  input_bam: NULL
+  reference: NULL
+  output_dir: "."
+  region: NULL # By default there's no region
+  tabix: "tabix" # Assume tabix is available in PATH
+  bcftools: "bcftools" # Assume bcftools is available in PATH
+  rastair: "rastair" # Assume rastair is available in PATH
+  include_flags: 3
+  exclude_flags: 3852
+  read_len: NULL
+  plot_vbias: TRUE
+  plot_gc: TRUE
+  is_WGBS: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r message=FALSE, warning=FALSE, include=FALSE}
+suppressPackageStartupMessages({
+  library(data.table)
+  library(ggplot2)
+})
+setDTthreads(max(1L, as.integer(params$threads)))
+
+# JAX patch: deduplicate binom.test calls on unique (mod, n) pairs — identical
+# numerical output but avoids redundant Clopper-Pearson calls on large datasets.
+binom_ci_dedup <- function(mod_vec, n_vec, conf = 0.999) {
+  pairs <- data.table(mod = mod_vec, n = n_vec)
+  unique_pairs <- unique(pairs[n > 0])
+  unique_pairs[, `:=`(
+    lower_ci = mapply(function(k, n) binom.test(k, n, conf.level = conf)$conf.int[1], mod, n),
+    upper_ci = mapply(function(k, n) binom.test(k, n, conf.level = conf)$conf.int[2], mod, n)
+  )]
+  result <- merge(pairs, unique_pairs, by = c("mod", "n"), all.x = TRUE, sort = FALSE)
+  result[is.na(lower_ci), `:=`(lower_ci = 0.0, upper_ci = 0.0)]
+  list(lower = result$lower_ci, upper = result$upper_ci)
+}
+
+parse_positions_vec <- function(dt, plot_vbias=FALSE) {
+  # mapq and read_length are never used after this point — drop in all cases
+  if (plot_vbias) {
+    meta_cols <- c("chr", "start", "end", "read_id", "orientation", "insert_size", "flag")
+  } else {
+    meta_cols <- c("chr", "flag")
+  }
+  col_types <- list(mod_cpgs="M", unmod_cpgs="U", snp_cpgs="S", mod_denovos="m", unmod_denovos="u")
+  n <- nrow(dt)
+  parts <- lapply(names(col_types), function(col) {
+    splits <- strsplit(as.character(dt[[col]]), ",", fixed=TRUE)
+    lens <- lengths(splits)
+    pos <- suppressWarnings(as.integer(unlist(splits, use.names=FALSE)))
+    ridx <- rep(seq_len(n), lens)
+    keep <- !is.na(pos)
+    if (!any(keep)) return(NULL)
+    data.table(row_idx=ridx[keep], pos_in_read=pos[keep], type=col_types[[col]])
+  })
+  # Free position columns in-place before expanding to billions of rows
+  dt[, (names(col_types)) := NULL]
+  gc()
+  parts <- Filter(Negate(is.null), parts)
+  if (length(parts) == 0) return(dt[integer(0), ..meta_cols])
+  result <- rbindlist(parts)
+  rm(parts); gc()
+  cbind(dt[result$row_idx, ..meta_cols], result[, .(pos_in_read, type)])
+}
+
+
+# For a subset of observations of read orientation on one strand,
+# calculate the suggested cutoff points
+calculate_cutoff <- function(mbias_table) {
+  # Ensure we process things in orders
+  mbias_table <- mbias_table[order(mbias_table$pos),]
+  # get the mean beta of the middle 60% of the data
+  n_obs <- nrow(mbias_table)
+  if (n_obs < 3) {
+    return(data.frame(left = as.double(0), right = as.double(0)))
+  }
+  upper_lim <- min(ceiling(n_obs * 0.8), n_obs-1)
+  lower_lim <- max(floor(n_obs * 0.2), 2)
+  mean_middle <- mean(mbias_table[lower_lim:upper_lim,]$beta)
+  upper_ci_max <- max(mbias_table[lower_lim:upper_lim,]$upper_ci)
+  lower_ci_min <- min(mbias_table[lower_lim:upper_lim,]$lower_ci)
+
+  check_match <- function(row, mean_middle, lower_ci_min, upper_ci_max) {
+    if (is.na(mean_middle) || is.null(mean_middle) || is.na(row$beta) || is.null(row$beta) || is.na(lower_ci_min) || is.null(lower_ci_min) || is.na(upper_ci_max) || is.null(upper_ci_max)) {
+      return(FALSE)
+    }
+    if (!row$beta %between% c(lower_ci_min, upper_ci_max)
+        && abs(row$beta - mean_middle) > 0.05
+        && !mean_middle %between% c(row$lower_ci, row$upper_ci)) {
+      return(TRUE)
+    }
+    return(FALSE)
+  }
+
+  left_cutoff = 0
+  right_cutoff = 0
+
+  middle = ceiling(n_obs/2)
+  for (pos in middle:1) {
+    if (check_match(mbias_table[pos,], mean_middle, lower_ci_min, upper_ci_max)) {
+      left_cutoff = pos
+      break
+    }
+  }
+  for (pos in 1:(n_obs-middle)) {
+    if (check_match(mbias_table[middle+pos,], mean_middle, lower_ci_min, upper_ci_max)) {
+      right_cutoff = n_obs - (middle+pos) + 1
+      break
+    }
+  }
+  return(data.frame(left=as.double(left_cutoff), right=as.double(right_cutoff)))
+}
+```
+
+```{r transform_data, include=FALSE}
+.ts <- function(msg) cat(format(Sys.time(), "[%H:%M:%S]"), " [transform_data] ", msg, "\n", file=stderr(), sep="")
+
+# if no bgz given, but a bam file is provided, generate bed file on the fly
+if ((is.na(params$input_bgz) || is.null(params$input_bgz) || nchar(params$input_bgz)==0 || !file.exists(params$input_bgz)) && !is.na(params$input_bam) && !is.null(params$input_bam) && nchar(params$input_bam)>0 && file.exists(params$input_bam)) {
+  if (is.na(params$reference) || is.null(params$reference) || nchar(params$reference)==0 || !file.exists(params$reference)) {
+    stop("Cannot run from bam file without a reference")
+  }
+
+  if (!is.na(params$region) && nchar(params$region) > 0) {
+    command=paste(params$rastair, "per-read --bed - -r", params$reference, "-l", params$region, "-f", params$include_flags, "-F", params$exclude_flags, "-@", params$threads, params$input_bam)
+  } else {
+    command=paste(params$rastair, "per-read --bed - -r", params$reference, "-f", params$include_flags, "-F", params$exclude_flags, "-@", params$threads, params$input_bam)
+  }
+} else if (!(is.na(params$input_bgz) || is.null(params$input_bgz) || nchar(params$input_bgz)==0 || !file.exists(params$input_bgz))) {
+  if (!is.na(params$region) && nchar(params$region) > 0) {
+    command=paste(params$tabix, "-h", params$input_bgz, params$region)
+  } else {
+    command=paste("zcat", params$input_bgz)
+  }
+}  else {
+  stop("Neither per-read bgz nor bam file given, cannot proceed")
+}
+
+.ts("loading per-read BED...")
+.t0 <- proc.time()
+data <- fread(cmd=command, header=TRUE, stringsAsFactors = FALSE)
+setnames(data, 1, "chr")
+data[, chr := as.factor(chr)]
+data[, orientation := as.factor(orientation)]
+.all_chroms <- levels(data$chr)
+.ts(paste0("loaded: ", nrow(data), " reads, ", length(.all_chroms), " chromosomes (", round((proc.time()-.t0)["elapsed"], 1), "s)"))
+cat("[transform_data] all chromosomes: ", paste(.all_chroms, collapse=", "), "\n", file=stderr(), sep="")
+
+# Filter to primary chromosomes only (numeric + X/Y, with or without "chr" prefix)
+.primary_re <- "^(chr)?([0-9]+|[XY])$"
+.primary_chroms <- grep(.primary_re, .all_chroms, value=TRUE)
+data <- data[chr %in% .primary_chroms]
+data[, chr := droplevels(data$chr)]
+.ts(paste0("after primary chr filter: ", nrow(data), " reads, ", length(.primary_chroms), " chromosomes (", paste(.primary_chroms, collapse=", "), ")"))
+
+if (!is.null(params$is_WGBS) && params$is_WGBS == TRUE) {
+  data[, num_mod := num_cpg - num_mod] # flip mod/unmod
+  setnames(data, c("mod_cpgs", "unmod_cpgs", "mod_denovos", "unmod_denovos"), c("unmod_cpgs", "mod_cpgs", "unmod_denovos", "mod_denovos"))
+}
+
+# remove reads without CpGs
+data <- data[num_cpg > 0]
+
+# filter by flags
+data <- data[bitwAnd(flag, params$include_flags) == params$include_flags]
+data <- data[bitwAnd(flag, params$exclude_flags) == 0]
+.ts(paste0("after CpG + flag filter: ", nrow(data), " reads"))
+
+if (is.null(params$read_len) || is.na(params$read_len) || !is.numeric(params$read_len)) {
+  read_len <- max(data$read_length, na.rm=TRUE)
+} else {
+  read_len = params$read_len
+}
+
+data <- data[, .N, by=.(chr, start, end, read_id, mapq, orientation, insert_size, read_length, flag, mod_cpgs, unmod_cpgs, snp_cpgs, mod_denovos, unmod_denovos)] # unify duplicate reads
+.ts(paste0("after dedup: ", nrow(data), " reads"))
+
+# Break comma-separated pos_in_read into a list
+.ts("running parse_positions_vec (vectorized)...")
+.t0 <- proc.time()
+data <- parse_positions_vec(data, plot_vbias=params$plot_vbias)
+.ts(paste0("parse_positions done: ", nrow(data), " CpG observations (", round((proc.time()-.t0)["elapsed"], 1), "s)"))
+
+mbias_table <- data[, .(
+  mod = sum(type %in% c("M", "m")),
+  unmod = sum(type %in% c("U", "u"))
+), by = .(
+  chr,
+  pos = pos_in_read,
+  read_pair = as.factor(fifelse(bitwAnd(flag, 64) > 0, "First", "Second")),
+  strand = as.factor(fifelse(bitwAnd(flag, 96) == 96 | bitwAnd(flag, 144) == 144, "OT", "OB"))
+)]
+.ts(paste0("mbias_table built: ", nrow(mbias_table), " (chr x pos x strand x read_pair) rows"))
+
+# Flip the OB reads so that mbias is always reported 5' -> 3'
+mbias_table[strand=="OT" & read_pair == "Second" | strand=="OB" & read_pair == "First", pos := read_len-pos]
+# JAX patch: use binom_ci_dedup to avoid redundant binom.test calls
+mbias_table <- mbias_table[, beta := mod/(mod+unmod)]
+.ts("computing binom CIs (deduped)...")
+.t0 <- proc.time()
+ci <- binom_ci_dedup(mbias_table$mod, mbias_table$mod + mbias_table$unmod)
+mbias_table[, lower_ci := ci$lower][, upper_ci := ci$upper]
+mbias_table <- mbias_table[, .(beta=first(beta), lower_ci=first(lower_ci), upper_ci=first(upper_ci)), by=.(chr, pos, read_pair, strand)]
+mbias_table <- mbias_table[!is.na(beta)]
+setkey(mbias_table, chr, pos)
+.ts(paste0("binom CIs done (", round((proc.time()-.t0)["elapsed"], 1), "s)"))
+.ts(paste0("transform_data done: ", nrow(mbias_table), " rows, ", length(unique(mbias_table$chr)), " chromosomes"))
+fwrite(mbias_table[order(chr, as.integer(pos), read_pair, strand)], file.path(params$output_dir, "mbias_table.tsv"), sep="\t")
+```
+
+## M-bias plots
+
+```{r plot_mbias, echo=FALSE, fig.height=5, fig.width=7}
+.chroms <- unique(mbias_table$chr)
+.chroms <- .chroms[order(suppressWarnings(as.integer(sub("^chr", "", as.character(.chroms)))), as.character(.chroms), na.last = TRUE)]
+for (.i in seq_along(.chroms)) {
+  chrom <- .chroms[.i]
+  cat(format(Sys.time(), "[%H:%M:%S]"), " [plot_mbias] chromosome ", chrom, " (", .i, "/", length(.chroms), ")\n", file=stderr(), sep="")
+  cutoffs <- mbias_table[chr==chrom, calculate_cutoff(as.data.frame(.SD)), by=.(chr, read_pair, strand)]
+  #write cutoffs to file if requested
+  if (!is.na(params$output_dir) && !is.null(params$output_dir)) {
+    out_table <- cutoffs[, .(l_ot = .SD[read_pair=="First", left],
+                             r_ot = .SD[read_pair=="First", right],
+                             l_ob = .SD[read_pair=="Second", left],
+                             r_ob = .SD[read_pair=="Second", right]),
+                         by=strand]
+    setDF(out_table)
+    out_table <- out_table[order(out_table$strand, decreasing=TRUE), ]  # OT before OB
+    write.table(out_table[,2:5], file.path(params$output_dir, paste0(chrom, "_cutoffs.txt")), row.names = FALSE, col.names = FALSE, quote=FALSE, sep=",")
+  }
+
+  if (grepl(.primary_re, as.character(chrom))) {
+    g <- ggplot(mbias_table[chr==chrom], aes(x=pos, y=beta, color=read_pair)) +
+          geom_line() +
+          geom_ribbon(aes(ymin=lower_ci, ymax=upper_ci, fill=read_pair), alpha=0.2) +
+          labs(color = "Read") +
+          xlab("Position in read (5'->3')") +
+          scale_color_discrete(labels=c('First in pair', 'Second in pair')) +
+          scale_fill_discrete(guide="none") +
+          theme_light()
+    if(!is.null(cutoffs)) {
+      g = g + geom_vline(aes(xintercept=left, color=read_pair), data=cutoffs)
+      g = g + geom_vline(aes(xintercept=read_len-right, color=read_pair), data=cutoffs)
+    }
+    g = g + facet_wrap(vars(strand), nrow = 2, as.table = FALSE)
+    g = g + ggtitle(chrom)
+    print(g)
+  }
+}
+```
+
+## V-bias plots
+
+```{r transform_vbias, include=FALSE}
+if (params$plot_vbias) {
+  suppressPackageStartupMessages({
+    library(ggside)
+  })
+
+  # JAX opt3: skip foverlaps + FASTA entirely.
+  # pos_in_fragment is computed directly from read coordinates (start, end, pos_in_read, flag).
+  # Eliminates the ~90-min chr1 bottleneck in opt2 (foverlaps + ordinal group-sort on 115M rows).
+  # Trade-off: no CpG-identity deduplication — each CpG counts once per read rather than once
+  # per fragment. Acceptable for position-bias detection (not absolute methylation rates).
+  vdata <- rbindlist(Filter(Negate(is.null), lapply(levels(data$chr), function(chrom) {
+    cat(format(Sys.time(), "[%H:%M:%S]"), " [transform_vbias] chromosome ", chrom, "\n", file=stderr(), sep="")
+
+    vdata_c <- data[chr == chrom]
+    if (nrow(vdata_c) == 0L) return(NULL)
+
+    vdata_c[, Orientation := fifelse(bitwAnd(flag, 96) == 96 | bitwAnd(flag, 144) == 144, "OT", "OB")]
+    vdata_c[, abs_pos := start + pos_in_read]
+
+    # Fragment bounds: leftmost start and rightmost end across both paired reads
+    frag_bounds <- vdata_c[, .(frag_start = min(start), frag_end = max(end)),
+                           by = .(read_id, Orientation)]
+    vdata_c <- vdata_c[frag_bounds, on = .(read_id, Orientation)]
+
+    # Distance from 5' end of the fragment: OT counts from left, OB counts from right
+    vdata_c[Orientation == "OT", pos_in_fragment := abs_pos - frag_start]
+    vdata_c[Orientation == "OB", pos_in_fragment := frag_end - abs_pos]
+
+    # Pre-aggregate to 2D histogram tiles — only biologically valid positions
+    vdata_c[pos_in_fragment >= 0L & pos_in_fragment < insert_size, .(
+      n_mod   = sum(type == "M"),
+      n_total = .N
+    ), by = .(chr, pos_in_fragment, insert_size, Orientation)]
+  })))
+}
+```
+
+```{r plot_vbias, echo=FALSE, fig.height=4, fig.width=7, warning=FALSE}
+if (params$plot_vbias) {
+  for (chrom in unique(vdata$chr)) {
+
+    # vdata is already pre-aggregated (pos_in_fragment < insert_size filtered at build time)
+    vdata_plot <- vdata[
+      chr == chrom,
+      .(beta         = sum(n_mod) / sum(n_total),
+        observations = sum(n_total)),
+      by = .(`Pos in fragment` = pos_in_fragment,
+             `Insert size`     = insert_size,
+             Orientation)
+    ]
+
+    side_counts <- vdata_plot[
+      , .(obs = sum(observations)),
+      by = .(`Insert size`, Orientation)
+    ]
+    side_counts[, obs_pdf:=obs/sum(obs), by=.(Orientation)]
+
+    y_max <- as.numeric(quantile(vdata_plot[["Insert size"]], 0.99,  na.rm = TRUE))
+    x_max <- as.numeric(quantile(vdata_plot[["Pos in fragment"]], 0.99, na.rm = TRUE))
+
+    p <- ggplot(vdata_plot, aes(x = `Pos in fragment`, y = `Insert size`, fill = beta)) +
+      geom_tile() +
+
+      geom_ysidebar(
+        data = side_counts,
+        aes(y = `Insert size`, x = obs_pdf),
+        inherit.aes = FALSE,
+        stat = "identity",
+        orientation = "y"
+      ) +
+      ggside(y.pos = "left") +
+
+      scale_ysidex_reverse() +
+
+      scale_fill_gradient2(low = "black", mid = "orange", high = "purple", midpoint = 0.5) +
+      scale_y_continuous(limits = c(0, 600), expand = c(0, 0)) +
+      scale_x_continuous(limits = c(0, 600), expand = c(0, 0)) +
+
+      ggtitle(chrom) +
+      facet_wrap(vars(Orientation)) +
+
+      theme_minimal() +
+      theme(
+        panel.grid = element_blank(),
+        ggside.panel.grid = element_blank(),
+        ggside.axis.title.x = element_blank(),
+        ggside.axis.text.x  = element_blank(),
+        ggside.axis.ticks.x = element_blank()
+      )
+
+    print(p)
+  }
+  rm(vdata, data)
+  invisible({gc()})
+}
+```
+
+## CpG/GC bias
+
+```{r parse_per_pos, include=FALSE}
+if (params$plot_gc) {
+  suppressPackageStartupMessages({
+    library(Rsamtools)
+    library(Biostrings)
+  })
+
+  if ((is.na(params$input_vcf) || is.null(params$input_vcf) || !file.exists(params$input_vcf)) && !is.na(params$input_bam) && !is.null(params$input_bam) && file.exists(params$input_bam)) {
+    if (!is.na(params$region) && nchar(params$region) > 0) {
+      command <- paste(params$rastair,
+    		"call -@", params$threads,
+    		"-l", params$region,
+    		"--vcf-info-fields SC5,CPG,CPGnovo --vcf-format-fields GT,DP,M5mC --vcf - -c",
+    		"-r", params$reference,
+    		params$input_bam,
+    		"|", params$bcftools, "norm -m-any",
+    		"|", params$bcftools, "query -f \"%CHROM\\t%POS\\t%REF\\t%ALT\\t%CPGnovo[\\t%TGT\\t%DP\\t%M5mC]\\n\"")
+    } else {
+      command <- paste(params$rastair,
+    		"call -@", params$threads,
+    		"--vcf-info-fields SC5,CPG,CPGnovo --vcf-format-fields GT,DP,M5mC --vcf - -c",
+    		"-r", params$reference,
+    		params$input_bam,
+    		"|", params$bcftools, "norm -m-any",
+    		"|", params$bcftools, "query -f \"%CHROM\\t%POS\\t%REF\\t%ALT\\t%CPGnovo[\\t%TGT\\t%DP\\t%M5mC]\\n\"")
+    }
+  } else if (!is.na(params$input_vcf) && !is.null(params$input_vcf) && file.exists(params$input_vcf)) {
+    if (!is.na(params$region) && nchar(params$region) > 0) {
+      command <- paste(params$bcftools,
+        "view", params$input_vcf,
+        params$region,
+        "|", params$bcftools, "norm -m-any",
+  		  "|", params$bcftools, "query -f \"%CHROM\\t%POS\\t%REF\\t%ALT\\t%CPGnovo[\\t%TGT\\t%DP\\t%M5mC]\\n\"")
+    } else {
+      command <- paste(params$bcftools,
+        "norm -m-any", params$input_vcf,
+  		  "|", params$bcftools, "query -f \"%CHROM\\t%POS\\t%REF\\t%ALT\\t%CPGnovo[\\t%TGT\\t%DP\\t%M5mC]\\n\"")
+    }
+  } else {
+    stop("Need either vcf or bam file to create gc bias plot")
+  }
+
+	all_calls <- fread(cmd=command,
+		stringsAsFactors=FALSE,
+		header=FALSE)
+	setnames(all_calls, c("chr", "pos", "ref", "alt", "isDN", "genotype", "depth", "beta"))
+	all_calls[grepl(",", beta, fixed=TRUE), beta := tstrsplit(beta, ",", fixed=TRUE)[[1]]]
+	all_calls[, beta := as.numeric(beta)]
+	all_calls[, `:=`(chr = as.factor(chr), ref=as.factor(ref), alt=as.factor(alt), genotype=as.factor(genotype))]
+
+	if (!is.null(params$is_WGBS) && params$is_WGBS == TRUE) {
+    all_calls[, beta := 1-beta]
+  }
+	site_windows <- all_calls[, .N, by=.(chr = as.character(chr), pos = as.integer(pos))]
+  site_windows <- site_windows[order(chr, pos)]
+
+  fa <- FaFile(params$reference)
+  open(fa)
+  on.exit(close(fa), add = TRUE)
+
+  chrom_lengths <- seqlengths(fa)
+  missing_chroms <- setdiff(unique(site_windows$chr), names(chrom_lengths))
+  if (length(missing_chroms) > 0) {
+    stop("Chromosome(s) missing from reference FASTA: ", paste(missing_chroms, collapse = ", "))
+  }
+
+  site_windows[, window_start := pmax(1L, pos - 50L)]
+  site_windows[, window_end := pmin(as.integer(chrom_lengths[chr]), pos + 50L)]
+
+  gr <- GenomicRanges::GRanges(
+    seqnames = site_windows$chr,
+    ranges = IRanges::IRanges(start = site_windows$window_start, end = site_windows$window_end)
+  )
+
+  seqs <- scanFa(fa, param = gr)
+  base_counts <- alphabetFrequency(seqs, baseOnly = TRUE)[, c("A", "C", "G", "T"), drop = FALSE]
+
+  site_windows[, gc_count := base_counts[, "G"] + base_counts[, "C"]]
+  site_windows[, at_count := base_counts[, "A"] + base_counts[, "T"]]
+  site_windows[, cpg_count := as.integer(vcountPattern("CG", seqs, fixed = TRUE))]
+  site_windows[, window_width := window_end - window_start + 1L]
+  rm(seqs)
+  site_windows[, chr := factor(chr, levels = levels(all_calls$chr))]
+  all_calls[site_windows, on = .(chr, pos), `:=`(
+    gc_count = i.gc_count,
+    at_count = i.at_count,
+    cpg_count = i.cpg_count,
+    window_start = i.window_start,
+    window_end = i.window_end,
+    window_width = i.window_width
+  )]
+}
+```
+
+GC bias:
+
+```{r gc_bias, echo=FALSE, warning=FALSE}
+if (params$plot_gc) {
+  beta_per_pos <- all_calls[, .(beta=round(mean(beta),1), gc_frac=round(sum(gc_count)/sum(gc_count+at_count), 1), cpgs=round(mean(cpg_count), 1)), by=.(chr, pos)]
+  for_plot <- beta_per_pos[, .N, by=.(beta, gc_frac)]
+  ggplot(for_plot, aes(x=gc_frac, y=beta, fill=N)) +
+  	geom_tile() +
+  	scale_fill_gradient2(low = "black", mid = "orange", high = "purple", midpoint = max(for_plot$N)/2) +
+  	xlab("%GC in 100bp window") +
+    ylab("Methylation") +
+    theme_classic()
+}
+```
+
+CpG bias:
+
+```{r cpg_bias, echo=FALSE, warning=FALSE}
+if (params$plot_gc) {
+  for_plot <- beta_per_pos[, .N, by=.(beta, cpgs)]
+  ggplot(for_plot, aes(x=cpgs, y=beta, fill=N)) +
+  	geom_tile() +
+  	scale_fill_gradient2(low = "black", mid = "orange", high = "purple", midpoint = max(for_plot$N)/2) +
+    xlab("CpGs in 100bp window") +
+    ylab("Methylation") +
+  	theme_classic()
+}
+```
+
+Depth bias:
+
+```{r depth_bias, echo=FALSE, warning=FALSE}
+if (params$plot_gc) {
+  depth_by_cpg <- all_calls[, .(depth=round(mean(depth)),  cpgs=round(mean(cpg_count))), by=.(chr, pos)]
+  for_plot <- depth_by_cpg[, .N, by=.(cpgs, depth)]
+  ggplot(for_plot, aes(x=cpgs, y=depth, fill=N)) +
+  	geom_tile() +
+  	scale_fill_gradient2(low = "black", mid = "orange", high="purple", midpoint = max(for_plot$N)/2) +
+    xlab("CpGs in 100bp window") +
+    ylab("Depth") +
+    ylim(0, quantile(depth_by_cpg$depth, 0.99)) +
+    theme_classic()
+}
+```
