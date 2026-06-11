@@ -85,17 +85,14 @@ git clone https://github.com/TheJacksonLaboratory/5baseTAPS.git
 cd 5baseTAPS
 ```
 
-### Minimal run command
+### Running a Quick Test
 
 ```bash
-nextflow run . \
-    -profile sumner2_singularity \
-    --input samplesheet.csv \
-    --genome CHM13 \
-    --outdir results
+module load singularity nextflow
+nextflow run . -profile sumner_test --outdir test_results/
 ```
 
-### Recommended: run via SLURM head script
+### Run via SLURM Head Script
 
 Submit a SLURM wrapper script that calls `nextflow run` so the Nextflow process itself is
 managed by the scheduler. Nextflow then submits each pipeline task as a separate SLURM job.
@@ -105,7 +102,7 @@ managed by the scheduler. Nextflow then submits each pipeline task as a separate
 #SBATCH --job-name=nf-5baseTAPS
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
+#SBATCH --mem=12G
 #SBATCH --time=48:00:00
 #SBATCH --output=logs/%x-%j.log
 #SBATCH --error=logs/%x-%j.log
@@ -115,8 +112,7 @@ nextflow run . \
     -profile sumner2_singularity \
     --input samplesheet.csv \
     --genome CHM13 \
-    --outdir results \
-    -resume
+    --outdir results
 ```
 
 ---
@@ -126,8 +122,8 @@ nextflow run . \
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--input` | — | Path to samplesheet CSV (required) |
-| `--genome` | `CHM13` | Reference genome key (`CHM13` or `GRCh38`) |
-| `--fasta` | — | Path to reference FASTA (overrides `--genome`) |
+| `--genome` | `CHM13` | Reference genome key (`CHM13`,`GRCh38`,`GRCm38`, etc.) |
+| `--fasta` | — | Path to reference FASTA (if it differs from the `--genome` fasta, all indexes are rebuilt) |
 | `--fasta_fai` | — | Path to FASTA index (`.fai`) |
 | `--dict` | — | Path to sequence dictionary (`.dict`) |
 | `--bwamem2` | — | Path to bwa-mem2 index directory |

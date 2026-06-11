@@ -20,7 +20,9 @@ include { TAPS_QC_REPORT      } from './modules/local/taps_qc_report/main'
 include { TAPS_MULTIQC        } from './modules/local/taps_multiqc/main'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_fastquorum_pipeline'
 include { PIPELINE_COMPLETION } from './subworkflows/local/utils_nfcore_fastquorum_pipeline'
-include { PREPARE_GENOME } from './subworkflows/local/prepare_genome'
+include { BWAMEM2_INDEX  } from './modules/nf-core/bwamem2/index/main'
+include { SAMTOOLS_FAIDX } from './modules/nf-core/samtools/faidx/main'
+include { SAMTOOLS_DICT  } from './modules/nf-core/samtools/dict/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,9 +36,15 @@ if (!params.fasta_fai && getGenomeAttribute('fasta_fai')) params.replace('fasta_
 if (!params.dict      && getGenomeAttribute('dict'))      params.replace('dict',      getGenomeAttribute('dict'))
 if (!params.bwamem2   && getGenomeAttribute('bwamem2'))   params.replace('bwamem2',   getGenomeAttribute('bwamem2'))
 
-// If local index paths no longer exist,
-// reset to null so SAMTOOLS_FAIDX / SAMTOOLS_DICT / BWAMEM2_INDEX rebuild from the FASTA.
-// fasta is intentionally excluded — it resolves to iGenomes S3 and is always accessible.
+// If --fasta was explicitly provided and differs from the genome config's fasta,
+// genome-derived indexes won't match — null them so they get rebuilt.
+if (params.fasta && getGenomeAttribute('fasta') && params.fasta != getGenomeAttribute('fasta')) {
+    params.replace('fasta_fai', null)
+    params.replace('dict',      null)
+    params.replace('bwamem2',   null)
+}
+
+// Reset to null if local index files no longer exist; triggers rebuild from FASTA.
 if (params.fasta_fai && !file(params.fasta_fai).exists()) {
     log.warn "fasta_fai not found at ${params.fasta_fai} — will rebuild from FASTA"
     params.replace('fasta_fai', null)
@@ -122,7 +130,7 @@ workflow JAXGT_5BASE_TAPS {
             params.replace("call_min_reads", '1 0 0')
         }
         if (!params.filter_min_reads) {
-            params.replace("filter_min_reads", '3 1 1')
+            params.replace("filter_min_reads", '1 0 0') 
         }
     }
     else {
@@ -137,24 +145,25 @@ workflow JAXGT_5BASE_TAPS {
             params.replace("call_min_reads", '1')
         }
         if (params.filter_min_reads == '') {
-            params.replace("filter_min_reads", '3')
+            params.replace("filter_min_reads", '1')
         }
     }
 
-    // WORKFLOW: build indexes if needed
-    PREPARE_GENOME(fasta)
+    // Build missing genome indexes — params.replace() results are not visible inside subworkflow
+    // actor threads, so index-build decisions must be made here in the calling-workflow context.
+    if (!params.bwamem2)   BWAMEM2_INDEX(fasta)
+    if (!params.fasta_fai) SAMTOOLS_FAIDX(fasta, [[id: 'no_fai'], []])
+    if (!params.dict)      SAMTOOLS_DICT(fasta)
 
-    // Gather built indices or get them from the params
-    // Built from the fasta file:
     dict = params.dict
         ? Channel.fromPath(params.dict).map { it -> [[id: 'dict'], it] }.collect()
-        : PREPARE_GENOME.out.dict
+        : SAMTOOLS_DICT.out.dict.collect()
     fasta_fai = params.fasta_fai
         ? Channel.fromPath(params.fasta_fai).map { it -> [[id: 'fai'], it] }.collect()
-        : PREPARE_GENOME.out.fasta_fai
+        : SAMTOOLS_FAIDX.out.fai.collect()
     bwamem2 = params.bwamem2
         ? Channel.fromPath(params.bwamem2, type: 'dir').map { it -> [[id: 'bwamem2'], it] }.collect()
-        : PREPARE_GENOME.out.bwamem2
+        : BWAMEM2_INDEX.out.index.collect()
     //
     // WORKFLOW: Run pipeline
     //
