@@ -56,7 +56,25 @@ to run a single analysis path regardless of library chemistry.
 
 ---
 
-## Input Samplesheet
+## Running the Pipeline
+
+First, clone the repository:
+
+```bash
+git clone https://github.com/TheJacksonLaboratory/5baseTAPS.git
+cd 5baseTAPS
+```
+
+### Running a Quick Test
+
+```bash
+module load singularity nextflow
+nextflow run . -profile sumner_test --outdir test_results/
+```
+
+### Input Samplesheet
+
+A complete guide to running the pipeline is available in [docs/usage.md](docs/usage.md).
 
 Prepare a CSV samplesheet with one row per FASTQ pair (multi-lane samples use multiple rows with the same `sample` name):
 
@@ -73,24 +91,6 @@ SAMPLE2,/path/to/SAMPLE2_L2_R1.fastq.gz,/path/to/SAMPLE2_L2_R2.fastq.gz,7M1S+T 7
 > See the [fgbio read structure docs](https://github.com/fulcrumgenomics/fgbio/wiki/Read-Structures) for other library configurations.
 
 Multi-lane rows with the same `sample` identifier are merged automatically before UMI grouping.
-
----
-
-## Running the Pipeline
-
-First, clone the repository:
-
-```bash
-git clone https://github.com/TheJacksonLaboratory/5baseTAPS.git
-cd 5baseTAPS
-```
-
-### Running a Quick Test
-
-```bash
-module load singularity nextflow
-nextflow run . -profile sumner_test --outdir test_results/
-```
 
 ### Run via SLURM Head Script
 
@@ -178,18 +178,6 @@ See [docs/benchmarking_vcfs.md](docs/benchmarking_vcfs.md) for full benchmarking
 
 ---
 
-## Documentation
-
-| Document | Contents |
-|----------|---------|
-| [docs/usage.md](docs/usage.md) | Samplesheet format, parameters, running the pipeline |
-| [docs/output.md](docs/output.md) | Complete output file reference |
-| [docs/interpret_multiqc.md](docs/interpret_multiqc.md) | How to read the MultiQC report |
-| [docs/benchmarking_vcfs.md](docs/benchmarking_vcfs.md) | SNP and methylation concordance vs. Illumina DRAGEN |
-| [CITATIONS.md](CITATIONS.md) | Tool citations |
-
----
-
 ## Credits
 
 The JAX-GT pipeline was developed by the JAX Genome Technologies bioinformatics team, built on
@@ -197,3 +185,7 @@ top of [nf-core/fastquorum](https://nf-co.re/fastquorum) (Nils Homer & Zach Norg
 Fulcrum Genomics) and the TAPS methylation conversion subworkflow 
 adapted from [nf-core/methylseq](https://nf-co.re/methylseq) (Phil Ewels et al.;
 doi:[10.5281/zenodo.1343417](https://doi.org/10.5281/zenodo.1343417)).
+
+Full tool citations are listed in [CITATIONS.md](CITATIONS.md).
+
+For questions or inquiries about the pipeline, contact the JAX Genome Technologies team at [GTdrylab@jax.org](mailto:GTdrylab@jax.org).

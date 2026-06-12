@@ -5,7 +5,7 @@
 **Reference:** GRCh38/hg38
 **DRAGEN version:** 5-base somatic v4.4.6
 
-All comparisons are caller-to-caller concordance (5baseTAPS vs. DRAGEN). Because no orthogonal truth set exists for this sample, concordance is evaluated between callers rather than against a ground truth.
+All comparisons are caller-to-caller concordance (5baseTAPS vs. DRAGEN). Because no orthogonal truth set exists for this sample, concordance is evaluated between callers rather than against a ground truth. For a concise overview of all results, [jump to the Summary](#summary).
 
 ---
 
@@ -17,7 +17,6 @@ Both pipelines processed UMI for deduplication with similar settings, allowing s
 | Aspect | 5baseTAPS (fgbio) | DRAGEN ICA |
 |--------|------------------|------------|
 | Min reads to call consensus | `--min-reads 1 0 0` (total ≥ 1; per-strand ≥ 0) | `--umi-min-supporting-reads 1` |
-| Strand identification | AB/BA by UMI tag + orientation | Swapped R1/R2 UMI + complementary orientation |
 | mC→T asymmetry at duplex merge | Not handled — methylation-agnostic | Extended algorithm for 5-base mC→T conversion |
 | Methylation in output BAM | Not annotated; called downstream by rastair | XM tags on both strands in duplex BAM |
 
@@ -65,8 +64,8 @@ Rastair is a genome-wide caller — it uses three internal ML models (CpG-contex
 
 ### SNP Concordance Results
 
-| Arm | Calls | vs. Baseline | Precision | Sensitivity | F1 |
-|-----|-------|-------------|-----------|-------------|-----|
+| Calls | vs. Baseline | Precision | Sensitivity | F1 |
+|-------|-------------|-----------|-------------|-----|
 | **Arm 1** — Rastair (4.09M genome-wide) | vs. DRAGEN unmasked | 91.76% | 97.15% | **94.37%** |
 | **Arm 2** — GATK HC + CpG mask (2.95M non-CpG) | vs. DRAGEN CpG-masked | 93.27% | 95.01% | **94.13%** |
 | **Arm 3** — GATK + rastair CpG hybrid (4.15M) | vs. DRAGEN unmasked | 90.52% | 97.11% | **93.70%** |
@@ -269,7 +268,6 @@ reflects per-site allele-frequency variation amplifying this scatter.
 
 | Comparison | Metric | Value |
 |------------|--------|-------|
-| GATK vs. DRAGEN, unmasked (naive) | F1 | 77.9% |
 | GATK vs. DRAGEN, CpG-masked | F1 | **94.1%** |
 | Rastair vs. DRAGEN, all sites | F1 | **94.4%** |
 | GATK + Rastair CpG-SNPs vs. DRAGEN | F1 | 93.7% |
@@ -280,7 +278,7 @@ reflects per-site allele-frequency variation amplifying this scatter.
 
 **Key findings:**
 
-1. **CpG masking is essential** for fair 5-base SNP comparison: without it GATK appears to have F1 = 77.9% (false negatives from 5mC→T conversion positions GATK correctly excluded); with matching CpG masks applied to both callers, GATK achieves F1 = **94.1%**.
+1. **CpG masking is essential** for fair 5-base SNP comparison: with matching CpG masks applied to both callers, GATK achieves F1 = **94.1%**.
 2. **Rastair F1 = 94.4%** over the full genome (all regions including difficult). The rastair paper reports 98.9% restricted to GIAB high-confidence regions; the gap reflects whole-genome evaluation scope.
 3. **Combined GATK + rastair CpG-SNPs (F1 93.7%)** is slightly lower than rastair alone, suggesting rastair's integrated model is marginally cleaner than the GATK/rastair hybrid.
 4. **GATK and rastair agree at 95% F1** at non-CpG positions (Arm 4, both CpG-masked), confirming high caller concordance where methylation ambiguity is removed.
