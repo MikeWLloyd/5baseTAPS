@@ -1,5 +1,5 @@
 /*
- * TAPS methylation conversion subworkflow (rastair 2.0.0)
+ * TAPS methylation conversion subworkflow (rastair 2.1.1)
  *
  * rastair call     -> per-position BED (+ VCF) from BAM     ─> methylKit
  * rastair per-read -> per-read BED from BAM (parallel)      ─> tabix ─> mbias HTML
@@ -23,7 +23,7 @@ workflow BAM_TAPS_CONVERSION {
     main:
     ch_versions = Channel.empty()
 
-    log.info "Running TAPS conversion with Rastair 2.0.0: call + per-read -> mbias + methylKit"
+    log.info "Running TAPS conversion with Rastair 2.1.1: call + per-read -> mbias + methylKit"
 
     //
     // STEP 1a: call methylated positions; emit per-position BED and VCF

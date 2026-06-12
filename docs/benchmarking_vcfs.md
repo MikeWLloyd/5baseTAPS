@@ -3,9 +3,40 @@
 **Sample:** GT26-01980 (internal sample, no GIAB truth set available)
 **Sequencing depth:** ~583M reads
 **Reference:** GRCh38/hg38
-**DRAGEN version:** 5-base somatic v4.4.6, min-reads=1 (family depth 1.12 ≈ no UMI consensus)
+**DRAGEN version:** 5-base somatic v4.4.6
 
 All comparisons are caller-to-caller concordance (5baseTAPS vs. DRAGEN). Because no orthogonal truth set exists for this sample, concordance is evaluated between callers rather than against a ground truth.
+
+---
+
+## UMI Consensus Processing
+
+Both pipelines processed UMI for deduplication with similar settings, allowing singleton families
+(min-reads = 1), but differ in how they handle 5-base data during duplex consensus calling.
+
+| Aspect | 5baseTAPS (fgbio) | DRAGEN ICA |
+|--------|------------------|------------|
+| Min reads to call consensus | `--min-reads 1 0 0` (total ≥ 1; per-strand ≥ 0) | `--umi-min-supporting-reads 1` |
+| Strand identification | AB/BA by UMI tag + orientation | Swapped R1/R2 UMI + complementary orientation |
+| mC→T asymmetry at duplex merge | Not handled — methylation-agnostic | Extended algorithm for 5-base mC→T conversion |
+| Methylation in output BAM | Not annotated; called downstream by rastair | XM tags on both strands in duplex BAM |
+
+At a methylated CpG, both strands read as T after 5-base conversion — the expected C/G complement
+is absent. DRAGEN corrects for this during duplex collapsing; fgbio does not. In practice the
+impact is limited to the ~2.9 M true duplex families (0.6% of output reads); the dominant
+singleton class is unaffected.
+
+| | fgbio | DRAGEN |
+|--|------:|-------:|
+| Input read-pairs | 535,545,401 | 558,989,563 |
+| Output consensus pairs / families | 472,835,403 | 498,453,489 |
+| **Mean family depth** | **1.133** | **1.121** |
+| True duplex reads emitted | 2,962,698 (0.6%) | 2,871,325 (0.6%) |
+| Singleton families | 88.5% | — |
+
+Mean family depth (input read-pairs ÷ output consensus pairs) ≈ 1.13 in both pipelines,
+confirming minimal UMI compression at this depth. The read-count difference (535 M vs. 559 M)
+reflects different FASTQ sources and lane merging, not a UMI processing difference.
 
 ---
 
@@ -170,6 +201,67 @@ Methylation at each CpG site is expressed as a beta value β ∈ [0, 1], where 0
 | \|Δβ\| ≤ 0.20 (20 pp) | 99.49% |
 
 > The small positive bias (+0.16 pp, DRAGEN slightly higher) is consistent with residual uncorrected het C→T sites in the DRAGEN CX report, as reported in the [rastair paper (Etzioni et al., bioRxiv 2026)](https://www.biorxiv.org/content/10.1101/2026.03.19.712983).
+
+### Methylated CpG site counts
+
+These are **unique genomic strand-positions** covered at ≥ 1×, filtered to CG context,
+chr1–22+X+Y; rastair filtered to `cpg=REF` (de-novo CpGs excluded to match DRAGEN scope).
+
+| Criterion | DRAGEN | 5baseTAPS (rastair, REF only) |
+|-----------|-------:|------------------------------:|
+| Total covered CpG positions | 55,933,439 | 56,596,637 |
+| Any methylation (β > 0) | 52,411,084 (93.7%) | 52,641,417 (93.0%) |
+| Predominantly methylated (β > 0.5) | 44,315,105 (79.2%) | 44,483,053 (78.6%) |
+| Highly methylated (β ≥ 0.8) | 39,087,147 (69.9%) | 39,179,698 (69.2%) |
+
+Site-level fractions are nearly identical across both callers at every threshold, consistent
+with the near-zero mean bias in the R² analysis.
+
+> **Note:** DRAGEN's Context Metrics HTML report shows "978 M Methylated CpG" — this is a
+> **read-level count** (sum of methylated read observations across all CpG sites), not the
+> count of distinct methylated sites. 978 M / 1,292 M total CpG reads = 75.7% read-level
+> methylation fraction, equivalent to the rastair per-read figure of 984 M / 1,319 M = 74.6%.
+
+### De-novo CpG methylation (`cpg=NEW`)
+
+Rastair also calls methylation at **de-novo CpGs** — positions where a SNP creates a new CpG
+dinucleotide absent from the reference (e.g., T→C adjacent to an existing G). These are tagged
+`cpg=NEW` in `rastair_call.bed.gz` and are excluded from the concordance analysis above.
+
+DRAGEN annotates such SNPs with `INFO/M5mC` ALT = `z` and reports allele-specific methylation
+at those positions via `FORMAT/M5mC`.
+
+| | Count |
+|--|------:|
+| Rastair `cpg=NEW` positions (chr1–22+X+Y) | 1,142,003 |
+| DRAGEN PASS SNPs with de-novo CpG context | 581,460 |
+| Rastair NEW confirmed by DRAGEN (within ±1 bp, both strands) | 1,083,932 |
+| **Fraction of rastair NEW confirmed by DRAGEN** | **94.9%** |
+
+Each SNP creates two rastair NEW positions (one per strand, coordinates P and P±1); matching
+within ±1 bp captures both. 94.9% of rastair NEW CpGs correspond to DRAGEN-confirmed germline
+CpG-gain SNPs, validating these as genuine de-novo CpG sites. The ~581 K DRAGEN calls are
+consistent with Etzioni et al. (bioRxiv 2026) who estimate ~500 K CpG-gain SNPs per diploid genome.
+
+**Methylation at confirmed de-novo CpG sites** (n = 536,889 direct-match positions):
+
+| Metric | Rastair β | DRAGEN `FORMAT/M5mC` |
+|--------|----------:|--------------------:|
+| Mean | 0.779 | 0.639 |
+| Any methylation (β > 0) | 93.8% | 77.0% |
+| Predominantly methylated (β > 0.5) | 80.2% | 65.3% |
+| Highly methylated (β ≥ 0.8) | 71.5% | 58.0% |
+| Pearson R² | | 0.390 |
+| Mean bias (DRAGEN − rastair) | | −0.140 (−14 pp) |
+
+Both tools agree that the majority of de-novo CpGs are predominantly methylated, consistent with
+Huertas et al. (2018) who report that 92.6% of CpG-gain SNPs exhibit dose-dependent methylation
+changes. The systematic 14 pp offset (rastair higher) is explained by 5-base chemistry at
+heterozygous SNPs: the reference T allele reads are indistinguishable from methylated C allele
+reads (both appear as T after mC→T conversion). Rastair counts all T observations as modified,
+giving β_rastair ≈ 0.5 + 0.5 × β_true; DRAGEN `FORMAT/M5mC` is genotype-corrected and reports
+only the allele-specific methylation (≈ β_true). The lower R² (39% vs. 98% for reference CpGs)
+reflects per-site allele-frequency variation amplifying this scatter.
 
 ---
 
