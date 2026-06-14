@@ -23,7 +23,7 @@ process FGBIO_COLLECTDUPLEXSEQMETRICS {
         log.info('[fgbio CollectDuplexSeqMetrics] Available memory not known - defaulting to 8GB. Specify process memory requirements to change this.')
     }
     else {
-        mem_gb = task.memory.giga
+        mem_gb = task.memory.giga - 8
     }
     """
     fgbio \\
