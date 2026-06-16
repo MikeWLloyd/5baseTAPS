@@ -125,7 +125,7 @@ The UMI consensus pipeline (`consensus_alignment/`) processes reads through four
 #### Example 1 — Single-strand consensus (aD=1, bD=0)
 A molecule where only A-strand reads were captured (most common at typical sequencing depths).
 ```
-GT26-01980:17	163	chr1	10000	17	19M1D13M4I36M3I63M1D5M	=	10053	180	CTAACCCTAACCCTAACCC...	EEEEE...HHHII	MC:Z:32M1D61M1D32M18S	MD:Z:0N18^T5T5T100^T5	RG:Z:A	MI:Z:17	NM:i:12	MQ:i:17	AS:i:94	XS:i:92	RX:Z:AACTAAC-GTTGTAT	aD:i:1	bD:i:0	cD:i:1	aE:f:0	bE:f:0	cE:f:0	aM:i:1	bM:i:0	cM:i:1	ac:Z:CTAACC...	ad:B:s,1,1,...	ae:B:s,0,0,...	aq:Z:EEEEE...	ms:i:101
+GT26-11111:17	163	chr1	10000	17	19M1D13M4I36M3I63M1D5M	=	10053	180	CTAACCCTAACCCTAACCC...	EEEEE...HHHII	MC:Z:32M1D61M1D32M18S	MD:Z:0N18^T5T5T100^T5	RG:Z:A	MI:Z:17	NM:i:12	MQ:i:17	AS:i:94	XS:i:92	RX:Z:AACTAAC-GTTGTAT	aD:i:1	bD:i:0	cD:i:1	aE:f:0	bE:f:0	cE:f:0	aM:i:1	bM:i:0	cM:i:1	ac:Z:CTAACC...	ad:B:s,1,1,...	ae:B:s,0,0,...	aq:Z:EEEEE...	ms:i:101
 ```
 
 #### Example 2 — True duplex consensus (aD=1, bD=1, cD=2)
@@ -137,12 +137,12 @@ The reference base at position 15 is **C** (part of a CpG dinucleotide, confirme
 - B-strand (`bc`): **C** — cytosine retained, indicating no methylation (or incomplete conversion)
 - Consensus SEQ: **N** — fgbio masks positions where A-strand and B-strand disagree, assigning quality `#` (Phred 2)
 ```
-GT26-01980:22743	99	chr1	10768243	60	143M	=	10768360	260	TAGTCCCAGCTACTNGGAGGCTGAGGTGGGAGG...	EEEEEEE8EEEEEEE8...qqqqq	MC:Z:143M	MD:Z:14c0g20t106	RG:Z:A	MI:Z:22743	NM:i:3	MQ:i:60	AS:i:131	XS:i:63	RX:Z:NCGTTGT-TACTCAT	aD:i:1	bD:i:1	cD:i:2	aE:f:0	bE:f:0	cE:f:0.00699301	aM:i:1	bM:i:1	cM:i:2	ac:Z:TAGTCCCAGCTACTТGGG...	bc:Z:TAGTCCCAGCTACTCAGG...	ad:B:s,1,1,...	bd:B:s,1,1,...	ae:B:s,0,0,...	be:B:s,0,0,...	aq:Z:EEEEEEE8...	bq:Z:E8EEEEEE...	ms:i:138
+GT26-1111:22743	99	chr1	10768243	60	143M	=	10768360	260	TAGTCCCAGCTACTNGGAGGCTGAGGTGGGAGG...	EEEEEEE8EEEEEEE8...qqqqq	MC:Z:143M	MD:Z:14c0g20t106	RG:Z:A	MI:Z:22743	NM:i:3	MQ:i:60	AS:i:131	XS:i:63	RX:Z:NCGTTGT-TACTCAT	aD:i:1	bD:i:1	cD:i:2	aE:f:0	bE:f:0	cE:f:0.00699301	aM:i:1	bM:i:1	cM:i:2	ac:Z:TAGTCCCAGCTACTТGGG...	bc:Z:TAGTCCCAGCTACTCAGG...	ad:B:s,1,1,...	bd:B:s,1,1,...	ae:B:s,0,0,...	be:B:s,0,0,...	aq:Z:EEEEEEE8...	bq:Z:E8EEEEEE...	ms:i:138
 ```
 
 ##### Read Name
-- fgbio replaces the Illumina instrument read name with **`{sampleName}:{moleculeID}`** — e.g. `GT26-01980:17`
-- `GT26-01980` is the sample ID; `17` is the UMI molecule number assigned by GroupReadsByUmi
+- fgbio replaces the Illumina instrument read name with **`{sampleName}:{moleculeID}`** — e.g. `GT26-1111:17`
+- `GT26-1111` is the sample ID; `17` is the UMI molecule number assigned by GroupReadsByUmi
 
 ---
 
@@ -423,7 +423,7 @@ Area chart: DS Families (blue), Duplexes – Actual (green), Duplexes – Ideal 
 
 Single curve (Actual / Ideal duplexes) plotted against input read pairs.
 
-- **Expected:** A flat horizontal line, stable across all read depths. For the 583M-read GT26-01980 sample, the ratio is flat at ~0.12 (12%). A flat ratio means quality filtering is depth-independent — adding more reads increases Ideal and Actual proportionally.
+- **Expected:** A flat horizontal line, stable across all read depths. For the 583M-read GT26-1111 sample, the ratio is flat at ~0.12 (12%). A flat ratio means quality filtering is depth-independent — adding more reads increases Ideal and Actual proportionally.
 - **Investigate if:** Ratio decreases at higher read depths — may indicate quality degradation at late sequencing cycles or library-specific chemistry issues.
 
 ---

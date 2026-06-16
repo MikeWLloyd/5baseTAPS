@@ -1,6 +1,6 @@
 # 5baseTAPS: Benchmarking vs. Illumina DRAGEN 5-base
 
-**Sample:** GT26-01980 (internal sample, no GIAB truth set available)
+**Sample:** DP16 (internal sample, no GIAB truth set available)
 **Sequencing depth:** ~583M reads
 **Reference:** GRCh38/hg38
 **DRAGEN version:** 5-base somatic v4.4.6
@@ -129,7 +129,6 @@ Key observations:
 
 2. **Genuine sensitivity gap at rare variants.** DRAGEN's somatic model is tuned to detect low-VAF minority alleles and may recover rare variants that germline callers (rastair, GATK) filter out for lack of prior support. This would represent a real but narrow sensitivity advantage of DRAGEN at the low end of the allele-frequency spectrum.
 
-Both effects are likely present. Since GT26-01980 is a non-cancer sample, the truly somatic fraction of `Somatic`-labeled calls is expected to be negligible. The practical conclusion is that the headline F1 (~94%) is well-supported at the level of common germline SNPs (>96% of the baseline), and the residual discordance is concentrated in a low-confidence DRAGEN-specific tier whose ground truth cannot be assessed without an orthogonal dataset.
 
 ### Ti/Tv ratios across concordance categories
 
