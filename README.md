@@ -157,7 +157,7 @@ See [docs/output.md](docs/output.md) for a complete description of all output fi
 ## Benchmarking
 
 Validated against Illumina DRAGEN 5-base somatic pipeline (v4.4.6) on a matched whole-genome
-sample (GT26-01980, 583M reads, GRCh38):
+sample (583M reads, GRCh38):
 
 **SNP calling** (PASS SNPs, chr1–22+X+Y, bcftools norm, vcfeval):
 
