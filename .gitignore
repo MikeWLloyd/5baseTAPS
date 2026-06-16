@@ -11,3 +11,4 @@ testing*
 .idea
 null/
 .vscode/
+docs/benchmarking_methods.md

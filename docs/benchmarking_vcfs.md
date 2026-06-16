@@ -31,11 +31,16 @@ singleton class is unaffected.
 | Output consensus pairs / families | 472,835,403 | 498,453,489 |
 | **Mean family depth** | **1.133** | **1.121** |
 | True duplex reads emitted | 2,962,698 (0.6%) | 2,871,325 (0.6%) |
-| Singleton families | 88.5% | — |
+| Singleton families | 88.5% | 89.1%† |
 
 Mean family depth (input read-pairs ÷ output consensus pairs) ≈ 1.13 in both pipelines,
 confirming minimal UMI compression at this depth. The read-count difference (535 M vs. 559 M)
 reflects different FASTQ sources and lane merging, not a UMI processing difference.
+
+> † DRAGEN does not report singleton families as a named field. Value derived from
+> `umi_metrics.csv` → `Histogram of num supporting fragments`: histogram\[0\] (depth=1 bin)
+> ÷ `Consensus pairs emitted` = 434,873,794 / 488,156,006 = 89.1%. fgbio value is
+> `cs_fraction` at `family_size = 1` from `*.family_sizes.txt` (= 88.47%, rounded to 88.5%).
 
 ---
 
