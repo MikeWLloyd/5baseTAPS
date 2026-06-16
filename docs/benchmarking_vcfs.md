@@ -57,8 +57,6 @@ reflects different FASTQ sources and lane merging, not a UMI processing differen
 | DRAGEN (CpG-masked) | 2,716,936 |
 | Rastair | 4,093,757 |
 | GATK HC (CpG-masked) | 2,953,599 |
-| Rastair CpG-context SNPs only | 1,191,604 |
-| GATK + Rastair CpG-SNPs (combined) | 4,145,203 |
 
 Rastair is a genome-wide caller — it uses three internal ML models (CpG-context, de-novo CpG, and non-CpG "other") and covers all SNP types, not just CpG sites. The CpG-context proportion (~29–30%) is nearly identical between rastair and DRAGEN, reflecting the fixed CpG density of the human genome. The ~231K extra rastair calls correspond to de-novo CpGs (a SNP creates a new CpG context not present in the reference), which DRAGEN does not model.
 
@@ -68,8 +66,7 @@ Rastair is a genome-wide caller — it uses three internal ML models (CpG-contex
 |-------|-------------|-----------|-------------|-----|
 | **Arm 1** — Rastair (4.09M genome-wide) | vs. DRAGEN unmasked | 91.76% | 97.15% | **94.37%** |
 | **Arm 2** — GATK HC + CpG mask (2.95M non-CpG) | vs. DRAGEN CpG-masked | 93.27% | 95.01% | **94.13%** |
-| **Arm 3** — GATK + rastair CpG hybrid (4.15M) | vs. DRAGEN unmasked | 90.52% | 97.11% | **93.70%** |
-| **Arm 4** — GATK HC CpG-masked (2.95M) | vs. Rastair CpG-masked | 95.91% | 94.16% | **95.02%** |
+| **Arm 3** — GATK HC CpG-masked (2.95M) | vs. Rastair CpG-masked | 95.91% | 94.16% | **95.02%** |
 
 #### Notes by Arm
 
@@ -79,10 +76,7 @@ Both callers are 5-base-aware and internally separate 5mC→T methylation from t
 **Arm 2 — GATK HC vs. DRAGEN (both CpG-masked):**
 GATK has no knowledge of 5mC→T conversion and would call methylated CpG positions as false-positive C→T SNPs. The CpG mask (28,304,361 intervals derived from the sample's own rastair BED) is applied to both VCFs, recovering ~17 F1 points over naive unmasked GATK (77.9% → 94.1%).
 
-**Arm 3 — Hybrid (GATK non-CpG + rastair CpG-SNPs) vs. DRAGEN (unmasked):**
-The hybrid underperforms rastair alone (93.7% vs. 94.4%) because GATK QUAL scores and rastair scores use incompatible scales — vcfeval's threshold sweep preferentially retains GATK calls and discards rastair CpG calls at any non-zero threshold. The all-PASS comparison is the only meaningful one for this combined approach.
-
-**Arm 4 — GATK HC (CpG-masked) vs. Rastair (CpG-masked), non-CpG positions only:**
+**Arm 3 — GATK HC (CpG-masked) vs. Rastair (CpG-masked), non-CpG positions only:**
 At positions where methylation ambiguity is removed (CpG mask applied to both), GATK and rastair agree on 95% of SNPs — higher than either achieves individually vs. DRAGEN. This confirms both callers are highly concordant at non-CpG variant sites. Source: `vcfeval_gatk_vs_rastair_masked/summary.txt`, job 2348679.
 
 > **Methods:** All VCFs: PASS SNPs only, `bcftools norm -m-any`, chr1–22+X+Y.
@@ -269,7 +263,6 @@ reflects per-site allele-frequency variation amplifying this scatter.
 |------------|--------|-------|
 | GATK vs. DRAGEN, CpG-masked | F1 | **94.1%** |
 | Rastair vs. DRAGEN, all sites | F1 | **94.4%** |
-| GATK + Rastair CpG-SNPs vs. DRAGEN | F1 | 93.7% |
 | GATK vs. Rastair, CpG-masked (non-CpG only) | F1 | **95.0%** |
 | Rastair vs. DRAGEN, methylation R² | Pearson R² | **98.1%** (n=54,645,317) |
 | Rastair vs. DRAGEN, methylation MAE | per-site \|Δβ\| | 0.013 (1.30 pp) |
@@ -279,10 +272,9 @@ reflects per-site allele-frequency variation amplifying this scatter.
 
 1. **CpG masking is essential** for fair 5-base SNP comparison: with matching CpG masks applied to both callers, GATK achieves F1 = **94.1%**.
 2. **Rastair F1 = 94.4%** over the full genome (all regions including difficult). The rastair paper reports 98.9% restricted to GIAB high-confidence regions; the gap reflects whole-genome evaluation scope.
-3. **Combined GATK + rastair CpG-SNPs (F1 93.7%)** is slightly lower than rastair alone, suggesting rastair's integrated model is marginally cleaner than the GATK/rastair hybrid.
-4. **GATK and rastair agree at 95% F1** at non-CpG positions (Arm 4, both CpG-masked), confirming high caller concordance where methylation ambiguity is removed.
-5. **Methylation R² = 98.1%** at 54.6M shared reference CpGs confirms near-perfect genome-wide concordance. Mean bias of +0.16 pp (DRAGEN slightly higher) matches the paper's observation of residual uncorrected het C→T sites in DRAGEN's CX_report.
-6. **The F1 gap is driven by DRAGEN's `Somatic` tier.** 96.5% of DRAGEN PASS SNPs are `Germline_DB`; rastair and GATK achieve a FN rate of only ~2.1% on these. The remaining 3.5% (`Somatic` — rare/novel variants absent from the germline DB) carry a ~21–23% FN rate and account for ~27–29% of all FNs. Without a matched normal, DRAGEN cannot distinguish true somatic from rare germline; these discordant calls may reflect DRAGEN false positives rather than rastair/GATK sensitivity gaps.
+3. **GATK and rastair agree at 95% F1** at non-CpG positions (Arm 3, both CpG-masked), confirming high caller concordance where methylation ambiguity is removed.
+4. **Methylation R² = 98.1%** at 54.6M shared reference CpGs confirms near-perfect genome-wide concordance. Mean bias of +0.16 pp (DRAGEN slightly higher) matches the paper's observation of residual uncorrected het C→T sites in DRAGEN's CX_report.
+5. **The F1 gap is driven by DRAGEN's `Somatic` tier.** 96.5% of DRAGEN PASS SNPs are `Germline_DB`; rastair and GATK achieve a FN rate of only ~2.1% on these. The remaining 3.5% (`Somatic` — rare/novel variants absent from the germline DB) carry a ~21–23% FN rate and account for ~27–29% of all FNs. Without a matched normal, DRAGEN cannot distinguish true somatic from rare germline; these discordant calls may reflect DRAGEN false positives rather than rastair/GATK sensitivity gaps.
 
 ---
 
