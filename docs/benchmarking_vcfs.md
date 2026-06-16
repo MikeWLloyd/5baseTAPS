@@ -40,7 +40,7 @@ reflects different FASTQ sources and lane merging, not a UMI processing differen
 > † DRAGEN does not report singleton families as a named field. Value derived from
 > `umi_metrics.csv` → `Histogram of num supporting fragments`: histogram\[0\] (depth=1 bin)
 > ÷ `Consensus pairs emitted` = 434,873,794 / 488,156,006 = 89.1%. fgbio value is
-> `cs_fraction` at `family_size = 1` from `*.family_sizes.txt` (= 88.47%, rounded to 88.5%).
+> `cs_fraction` at `family_size = 1` from `*.family_sizes.txt`.
 
 ---
 
