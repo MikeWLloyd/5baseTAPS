@@ -12,3 +12,5 @@ testing*
 null/
 .vscode/
 docs/benchmarking_methods.md
+docs/benchmarking_vcfs.md 
+internalREADME.md

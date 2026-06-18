@@ -154,27 +154,6 @@ See [docs/output.md](docs/output.md) for a complete description of all output fi
 
 ---
 
-## Benchmarking
-
-Validated against Illumina DRAGEN 5-base somatic pipeline (v4.4.6) on a matched whole-genome
-sample (583M reads, GRCh38):
-
-**SNP calling** (PASS SNPs, chr1–22+X+Y, bcftools norm, vcfeval):
-
-| Caller | Precision | Sensitivity | F1 |
-|--------|-----------|-------------|-----|
-| Rastair (genome-wide) | 91.8% | 97.2% | **94.4%** |
-| GATK HC + CpG mask (non-CpG) | 93.3% | 95.0% | **94.1%** |
-
-**5mC methylation concordance** (54.6 M shared CpG sites, reference CpGs, no variant sites):
-
-| Metric | Value |
-|--------|-------|
-| Pearson R² | **98.1%** |
-| MAE | 1.30 pp |
-| Mean bias (DRAGEN − rastair) | +0.16 pp |
-
-See [docs/benchmarking_vcfs.md](docs/benchmarking_vcfs.md) for full benchmarking methods and results.
 
 ---
 
