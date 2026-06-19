@@ -76,7 +76,9 @@ nextflow run . -profile sumner_test --outdir test_results/
 
 A complete guide to running the pipeline is available in [docs/usage.md](docs/usage.md).
 
-Prepare a CSV samplesheet with one row per FASTQ pair (multi-lane samples use multiple rows with the same `sample` name):
+Prepare a CSV samplesheet with one row per FASTQ pair (multi-lane samples use multiple rows with the same `sample` name). The `read_structure` column depends on how the sequencing run was demultiplexed:
+
+**Type 1 — Inline UMI** (UMI embedded in read sequence, raw BCL Convert output):
 
 ```csv
 sample,fastq_1,fastq_2,read_structure
@@ -85,10 +87,19 @@ SAMPLE2,/path/to/SAMPLE2_L1_R1.fastq.gz,/path/to/SAMPLE2_L1_R2.fastq.gz,7M1S+T 7
 SAMPLE2,/path/to/SAMPLE2_L2_R1.fastq.gz,/path/to/SAMPLE2_L2_R2.fastq.gz,7M1S+T 7M1S+T
 ```
 
-> **Read structure for Illumina 5-base:** `7M1S+T 7M1S+T`
-> (7 bp UMI, 1 bp spacer, then template bases — on both R1 and R2)
+**Type 2 — UMI in read header** (BCL Convert already extracted UMI into the read name and trimmed adapters):
+
+```csv
+sample,fastq_1,fastq_2,read_structure
+SAMPLE1,/path/to/SAMPLE1_R1.fastq.gz,/path/to/SAMPLE1_R2.fastq.gz,+T +T
+SAMPLE2,/path/to/SAMPLE2_L1_R1.fastq.gz,/path/to/SAMPLE2_L1_R2.fastq.gz,+T +T
+SAMPLE2,/path/to/SAMPLE2_L2_R1.fastq.gz,/path/to/SAMPLE2_L2_R2.fastq.gz,+T +T
+```
+
+> `7M1S+T 7M1S+T` — 7 bp UMI + 1 bp spacer trimmed from each read (Type 1)
+> `+T +T` — reads are all template; UMI transferred from read name to BAM tag (Type 2)
 >
-> See the [fgbio read structure docs](https://github.com/fulcrumgenomics/fgbio/wiki/Read-Structures) for other library configurations.
+> See [docs/usage.md](docs/usage.md) for full details on both input types.
 
 Multi-lane rows with the same `sample` identifier are merged automatically before UMI grouping.
 

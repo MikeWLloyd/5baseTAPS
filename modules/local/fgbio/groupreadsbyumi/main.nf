@@ -4,8 +4,8 @@ process FGBIO_GROUPREADSBYUMI {
 
     conda "bioconda::fgbio=2.4.0"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/87/87626ef674e2f19366ae6214575a114fe80ce598e796894820550731706a84be/data'
-        : 'community.wave.seqera.io/library/fgbio:2.4.0--913bad9d47ff8ddc'}"
+        ? 'docker://community.wave.seqera.io/library/bwa-mem2_fgbio_samtools:d6fd27126a192efa'
+        : 'community.wave.seqera.io/library/bwa-mem2_fgbio_samtools:d6fd27126a192efa'}"
 
     input:
     tuple val(meta), path(mapped_bam)

@@ -14,9 +14,24 @@ Prepare a CSV samplesheet with one row per FASTQ pair. Multi-lane samples use mu
 
 ### Samplesheet format
 
-5baseTAPS is designed for paired-end TAPS libraries with inline UMIs on both R1 and R2.
+5baseTAPS supports two FASTQ input types depending on how the sequencing run was demultiplexed. The `read_structure` column in the samplesheet is the key differentiator.
 
-**Mixed samplesheet** — lanes are merged automatically before UMI grouping; single- and multi-lane samples can be combined in one file:
+Multi-lane samples use multiple rows with the same `sample` name — lanes are merged automatically before UMI grouping. Single- and multi-lane samples can be combined in one file.
+
+---
+
+#### Input Type 1 — Inline UMI (raw FASTQ)
+
+The UMI is embedded at the 5′ end of both R1 and R2 read sequences, immediately followed by a spacer base. This is the raw output from sequencing when BCL Convert is run **without** UMI extraction.
+
+Read structure: `7M1S+T 7M1S+T` — 7 bp UMI + 1 bp spacer + template, on both R1 and R2.
+
+```
+Read 1: [AAACCCG][A][insert sequence ...]
+          7bp UMI  sp  template (+T)
+```
+
+The pipeline trims the UMI and spacer from the read sequences using `fgbio FastqToBam`, populates the BAM `RX` tag, then proceeds to alignment and UMI grouping. Reads are uniform length (e.g. 143 bp) after trimming.
 
 ```csv
 sample,fastq_1,fastq_2,read_structure
@@ -26,7 +41,32 @@ SAMPLE2,/path/to/SAMPLE2_L002_R1.fastq.gz,/path/to/SAMPLE2_L002_R2.fastq.gz,7M1S
 SAMPLE2,/path/to/SAMPLE2_L003_R1.fastq.gz,/path/to/SAMPLE2_L003_R2.fastq.gz,7M1S+T 7M1S+T
 ```
 
-The `read_structure` must be identical for all rows of **the same sample** and must match your library prep kit. The example above (`7M1S+T 7M1S+T`) corresponds to a 7 bp UMI + 1 bp spacer on both R1 and R2 (e.g. IDT xGen Prism duplex UMI). Consult your library prep kit documentation for the correct read structure. See the [fgbio read structure docs](https://github.com/fulcrumgenomics/fgbio/wiki/Read-Structures) for syntax details.
+---
+
+#### Input Type 2 — UMI in read header (BCL Convert demultiplexed)
+
+The UMI has already been extracted by BCL Convert and placed into the FASTQ read name. Adapter trimming is also applied by BCL Convert, so reads are variable length. The read sequences contain only insert bases — no UMI prefix to trim.
+
+Read name format (Illumina BCL Convert, dual UMI):
+```
+@INSTRUMENT:RUN:FLOWCELL:LANE:TILE:X:Y:UMI1+UMI2 1:N:0:SAMPLEINDEX
+                                       ^^^^^^^^^^
+                                       7+7 bp dual UMI in 8th colon field
+```
+
+Use `read_structure = "+T +T"` (all bases are template; no UMI in reads). The pipeline passes `--extract-umis-from-read-names` to `fgbio FastqToBam`, which reads the UMI from the 8th colon-delimited field of the read name and populates the BAM `RX` tag directly. No read trimming occurs. UMI grouping and consensus calling then proceed identically to Type 1.
+
+```csv
+sample,fastq_1,fastq_2,read_structure
+SAMPLE1,/path/to/SAMPLE1_R1.fastq.gz,/path/to/SAMPLE1_R2.fastq.gz,+T +T
+SAMPLE2,/path/to/SAMPLE2_L001_R1.fastq.gz,/path/to/SAMPLE2_L001_R2.fastq.gz,+T +T
+SAMPLE2,/path/to/SAMPLE2_L002_R1.fastq.gz,/path/to/SAMPLE2_L002_R2.fastq.gz,+T +T
+SAMPLE2,/path/to/SAMPLE2_L003_R1.fastq.gz,/path/to/SAMPLE2_L003_R2.fastq.gz,+T +T
+```
+
+> **Note:** All lanes of a sample must use the same `read_structure`. Different samples in the same samplesheet may use different types — mixing Type 1 and Type 2 samples in a single run is supported.
+
+---
 
 ### Samplesheet column reference
 
@@ -35,7 +75,7 @@ The `read_structure` must be identical for all rows of **the same sample** and m
 | `sample`         | Sample name. Identical across rows from the same sample (multi-lane). Spaces are converted to underscores. |
 | `fastq_1`        | Full path to R1 FASTQ. Extension must be `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz`. |
 | `fastq_2`        | Full path to R2 FASTQ. Extension must be `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz`. |
-| `read_structure` | fgbio [read structure](https://github.com/fulcrumgenomics/fgbio/wiki/Read-Structures) describing UMI and template base allocation. |
+| `read_structure` | fgbio [read structure](https://github.com/fulcrumgenomics/fgbio/wiki/Read-Structures) string. Use `7M1S+T 7M1S+T` for inline UMI (Type 1) or `+T +T` for UMI-in-header (Type 2). Must be identical across all lanes of the same sample. |
 
 ### Main Options
 

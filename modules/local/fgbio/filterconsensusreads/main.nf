@@ -4,8 +4,8 @@ process FGBIO_FILTERCONSENSUSREADS {
 
     conda "bioconda::fgbio=2.4.0 bioconda::samtools=1.21"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/22/22e054c20192395e0e143df6c36fbed6ce4bd404feba05793aff16819e01fff1/data'
-        : 'community.wave.seqera.io/library/fgbio_bwa_samtools:6fad70472c85d4d3'}"
+        ? 'docker://community.wave.seqera.io/library/bwa-mem2_fgbio_samtools:d6fd27126a192efa'
+        : 'community.wave.seqera.io/library/bwa-mem2_fgbio_samtools:d6fd27126a192efa'}"
 
     input:
     tuple val(meta), path(consensus_bam)
