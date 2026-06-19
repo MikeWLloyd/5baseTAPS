@@ -28,7 +28,7 @@ process GATK4_HAPLOTYPECALLER {
     script:
     def args        = task.ext.args   ?: ''
     def prefix      = task.ext.prefix ?: "${meta.id}.${interval}"
-    def avail_mem   = task.memory ? (task.memory.toGiga() - 2) : 14
+    def avail_mem   = task.memory ? (task.memory.toGiga() - 1) : 14
     // PairHMM threads capped at 4 — diminishing returns past 4, net slowdown past 8.
     def hmm_threads = Math.min(4, Math.max(1, task.cpus - 2))
     """
