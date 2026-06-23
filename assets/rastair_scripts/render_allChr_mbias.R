@@ -7,7 +7,7 @@ suppressMessages({
   library(argparser)
 })
 
-rmd_file <- "perChr_mbias_report_jax.Rmd"
+rmd_file <- "allChr_mbias_report_jax.Rmd"
 
 get_script_dir <- function(command_line_args) {
   command_line = paste(command_line_args, collapse=" ")
@@ -39,6 +39,9 @@ parser <- add_argument(parser, "--reference",
 parser <- add_argument(parser, "--bcftools",
                        help="Path to bcftools binary",
                        default="bcftools")
+parser <- add_argument(parser, "--sample-name",
+                       help="Sample name shown in the report title",
+                       default="")
 
 args <- parse_args(parser)
 
@@ -48,14 +51,15 @@ if (is.na(args$rds_dir) || is.null(args$rds_dir) || !dir.exists(args$rds_dir)) {
 }
 
 params_list <- list(
-  rds_dir    = normalizePath(args$rds_dir),
-  output_dir = normalizePath(args$output_prefix),
-  threads    = args$threads,
-  plot_vbias = args$vbias,
-  plot_gc    = args$gc,
-  input_vcf  = if (nchar(args$vcf) > 0) args$vcf else NA,
-  reference  = if (nchar(args$reference) > 0) args$reference else NA,
-  bcftools   = args$bcftools
+  rds_dir     = normalizePath(args$rds_dir),
+  output_dir  = normalizePath(args$output_prefix),
+  threads     = args$threads,
+  plot_vbias  = args$vbias,
+  plot_gc     = args$gc,
+  input_vcf   = if (nchar(args$vcf) > 0) args$vcf else NA,
+  reference   = if (nchar(args$reference) > 0) args$reference else NA,
+  bcftools    = args$bcftools,
+  sample_name = if (!is.na(args$sample_name)) args$sample_name else ""
 )
 
 script_dir <- get_script_dir(commandArgs())

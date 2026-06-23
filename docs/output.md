@@ -294,7 +294,14 @@ These files are used to estimate TAPS conversion efficiency and validate assay p
 
 ### 6. M-bias Report
 
-* **`<sample>/methylation/<sample>.rastair_mbias.html`**: Per-position methylation bias plot showing whether methylation levels are uniform across read positions (expected) or elevated at read ends (indicates trimming artifacts or incomplete TAPS conversion).
+* **`<sample>/methylation/<sample>.rastair_mbias.html`**: Self-contained HTML report with four diagnostic sections:
+
+| Section | Description | Controlled by |
+|---------|-------------|---------------|
+| **M-bias** | Per-position methylation level (β) for each read pair and strand across read length. Flat = clean; elevated at ends = trimming artifact or incomplete conversion. | Always produced |
+| **V-bias** | Per-fragment heatmap of β vs. position-in-fragment and insert size, split by orientation. Detects position/orientation-specific conversion bias not visible in the marginal M-bias curves. | `--plot_vbias` (default: on) |
+| **GC bias** | Methylation level vs. GC content of the local genomic window around each CpG site. | `--plot_gc` (default: on) |
+| **CpG density bias** | Methylation level vs. local CpG density. | `--plot_gc` (default: on) |
 
 ---
 
@@ -340,7 +347,7 @@ These files are used to estimate TAPS conversion efficiency and validate assay p
 | **`<s>/qc/duplex/<s>.duplex_seq_metrics.duplex_qc.pdf`** | fgbio duplex QC summary PDF |
 | **`<s>/qc/variant_call/<s>.bcftools_stats.txt`** | bcftools stats on PASS SNP VCF |
 | **`<s>/qc/variant_call/<s>.dragstr_model.txt`** | DRAGEN STR model calibration parameters |
-| **`<s>/methylation/<s>.rastair_mbias.html`** | M-bias plot (per-position methylation) |
+| **`<s>/methylation/<s>.rastair_mbias.html`** | M-bias report (M-bias, V-bias, GC/CpG density bias) |
 | **`<s>/qc/fastqc/<s>_1_fastqc.html`** | FastQC quality report for R1 raw reads |
 
 NOTE: `<s>` represents the sample ID wildcard.
@@ -457,7 +464,7 @@ Three curves (CS, DS, SS) plotted as **total reads allocated to families of size
 | `<s>.rastair_perread.bed.gz` | `<s>/methylation/` | Per-read CpG methylation assignments |
 | `<s>.rastair_perread.bed.gz.tbi` | `<s>/methylation/` | Tabix index for per-read BED |
 | `<s>.rastair_methylkit.txt.gz` | `<s>/methylation/` | Methylation in methylKit R format for differential analysis |
-| `<s>.rastair_mbias.html` | `<s>/methylation/` | M-bias plot — per-position methylation across read length |
+| `<s>.rastair_mbias.html` | `<s>/methylation/` | M-bias report — M-bias, V-bias, GC/CpG density bias |
 | `<s>.methylation_summary.tsv` | `<s>/methylation/` | Per-chromosome and genome-wide CpG coverage + global methylation % |
 | `<s>.lambda_negCtrl.methylation_summary.tsv` | `<s>/methylation/` | Lambda spike-in methylation summary (conversion efficiency QC) |
 | `<s>.puc19_posCtrl.methylation_summary.tsv` | `<s>/methylation/` | pUC19 spike-in methylation summary (positive control QC) |

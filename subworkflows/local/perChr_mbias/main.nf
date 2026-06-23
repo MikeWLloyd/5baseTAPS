@@ -93,9 +93,10 @@ process MBIAS_GATHER_RENDER {
     """
     mkdir -p rds_in out
     mv ${rds_files} rds_in/
-    Rscript ${assets}/perChr_mbias.R \\
+    Rscript ${assets}/render_allChr_mbias.R \\
         --rds-dir       rds_in \\
         --output-prefix out \\
+        --sample-name   ${meta.id} \\
         --threads       ${task.cpus} \\
         ${vbias_flag} \\
         ${gc_flags}

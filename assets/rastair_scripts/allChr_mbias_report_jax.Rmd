@@ -1,19 +1,20 @@
 ---
-title: "Rastair Methylation Bias Report"
+title: "`r if (nzchar(params$sample_name)) paste0(params$sample_name, ' — Rastair Methylation Bias Report') else 'Rastair Methylation Bias Report'`"
 date: "`r Sys.Date()`"
 output:
   html_document:
     toc: true
     theme: united
 params:
-  rds_dir:    NULL   # directory containing chrN_mbias_table.rds files from stage 1
-  output_dir: "."
-  threads:    1
-  plot_vbias: FALSE
-  plot_gc:    FALSE
-  input_vcf:  NULL
-  reference:  NULL
-  bcftools:   "bcftools"
+  rds_dir:     NULL   # directory containing chrN_mbias_table.rds files from stage 1
+  output_dir:  "."
+  threads:     1
+  plot_vbias:  FALSE
+  plot_gc:     FALSE
+  input_vcf:   NULL
+  reference:   NULL
+  bcftools:    "bcftools"
+  sample_name: ""
 ---
 
 ```{r setup, include=FALSE}
