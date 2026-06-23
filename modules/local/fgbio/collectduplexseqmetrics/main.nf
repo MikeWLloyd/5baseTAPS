@@ -1,4 +1,4 @@
-process FGBIO_DUPLEX_QC {
+process DUPLEX_QC {
     tag "${meta.id}"
     label 'process_low'
 
