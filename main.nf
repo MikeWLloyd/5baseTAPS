@@ -86,7 +86,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    JAXGT_5BASE_TAPS(
+    JAXGT_5BASETAPS(
         PIPELINE_INITIALISATION.out.samplesheet
     )
     //
@@ -99,7 +99,7 @@ workflow {
         params.outdir,
         params.monochrome_logs,
         params.hook_url,
-        JAXGT_5BASE_TAPS.out.multiqc_report,
+        JAXGT_5BASETAPS.out.multiqc_report,
     )
 }
 
@@ -109,7 +109,7 @@ workflow {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-workflow JAXGT_5BASE_TAPS {
+workflow JAXGT_5BASETAPS {
     take:
     samplesheet // channel: samplesheet read in from --input
 
