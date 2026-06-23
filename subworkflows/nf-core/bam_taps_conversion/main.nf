@@ -9,7 +9,7 @@ include { RASTAIR_CALL         } from '../../../modules/nf-core/rastair/call/mai
 include { RASTAIR_CALL_SUMMARY } from '../../../modules/local/rastair_call_summary/main'
 include { RASTAIR_PERREAD      } from '../../../modules/nf-core/rastair/perread/main'
 include { TABIX_TABIX          } from '../../../modules/local/tabix_tabix/main'
-include { RASTAIR_MBIAS        } from '../../../modules/nf-core/rastair/mbias/main'
+include { PERCHROMOSOME_MBIAS as RASTAIR_MBIAS } from '../../local/perChr_mbias/main'
 include { RASTAIR_METHYLKIT    } from '../../../modules/nf-core/rastair/methylkit/main'
 
 workflow BAM_TAPS_CONVERSION {
@@ -56,12 +56,14 @@ workflow BAM_TAPS_CONVERSION {
     ch_versions = ch_versions.mix(TABIX_TABIX.out.versions)
 
     //
-    // STEP 2b: M-bias HTML report from per-read BED + its tabix index
+    // STEP 2b: M-bias HTML report — per-chromosome two-stage strategy
+    //          (avoids R 2^31 vector-length crash on large samples)
     //
     RASTAIR_MBIAS(
-        RASTAIR_PERREAD.out.bed.join(TABIX_TABIX.out.tbi)
+        RASTAIR_PERREAD.out.bed.join(TABIX_TABIX.out.tbi),
+        RASTAIR_CALL.out.vcf,
+        ch_fasta
     )
-    ch_versions = ch_versions.mix(RASTAIR_MBIAS.out.versions)
 
     //
     // STEP 2c: methylKit-format table from per-position BED (pure shell, no container)

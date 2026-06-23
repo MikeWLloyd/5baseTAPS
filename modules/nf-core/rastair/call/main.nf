@@ -14,7 +14,7 @@ process RASTAIR_CALL {
 
     output:
     tuple val(meta), path("*.rastair_call.bed.gz"), emit: bed
-    tuple val(meta), path("*.rastair_call.vcf.gz"), emit: vcf, optional: true
+    tuple val(meta), path("*.rastair_call.vcf.gz"), emit: vcf
     path "versions.yml",                            emit: versions
 
     when:
@@ -23,7 +23,7 @@ process RASTAIR_CALL {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def vcf_arg = task.ext.write_vcf != false ? "--vcf ${prefix}.rastair_call.vcf.gz" : ''
+    def vcf_arg = "--vcf ${prefix}.rastair_call.vcf.gz"
     def threads = task.ext.threads ?: task.cpus
 
     """

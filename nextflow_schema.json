@@ -84,17 +84,17 @@
                 "rastair_rscript_dir": {
                     "type": "string",
                     "fa_icon": "fas fa-folder",
-                    "description": "Path to directory containing patched rastair R scripts (QC_report.Rmd, mbias.R). Defaults to assets/rastair_scripts/ inside the pipeline. Use empty string to use container built-ins."
+                    "description": "Path to directory containing rastair R scripts (mbias.R, QC_report_jax.Rmd, perChr_mbias_chr.R, perChr_mbias.R, perChr_mbias_report_jax.Rmd). Defaults to assets/rastair_scripts/ inside the pipeline. Use empty string to use container built-ins."
                 },
-                "rastair_mbias_mem_base": {
-                    "type": "integer",
-                    "fa_icon": "fas fa-memory",
-                    "description": "Base memory (GB) for RASTAIR_MBIAS. Formula: (base + step × attempt) GB. Elion2=355 (ceiling ~376 GB), Sumner2=300 (compute ceiling 738 GB)."
+                "plot_vbias": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-chart-bar",
+                    "description": "Enable per-fragment V-bias heatmap in the M-bias report. Adds ~10 GB and ~3 min per chromosome to MBIAS_PER_CHR."
                 },
-                "rastair_mbias_mem_step": {
-                    "type": "integer",
-                    "fa_icon": "fas fa-memory",
-                    "description": "Per-attempt memory increment (GB) for RASTAIR_MBIAS retries. Elion2=10 (tight ceiling), Sumner2=100 (~25% of 400 GB)."
+                "plot_gc": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-chart-line",
+                    "description": "Enable GC/CpG/depth bias plots in the M-bias report. Requires the reference FASTA and the rastair call VCF."
                 }
             }
         },
