@@ -1,4 +1,4 @@
-process TAPS_WGS_COVERAGE_METRICS {
+process WGS_QC {
     tag "${meta.id}"
     label 'process_single'
 

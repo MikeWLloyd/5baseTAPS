@@ -1,4 +1,4 @@
-process TAPS_METHYL_METRICS {
+process METHYL_QC {
     tag "${meta.id}"
     label 'process_low'
 

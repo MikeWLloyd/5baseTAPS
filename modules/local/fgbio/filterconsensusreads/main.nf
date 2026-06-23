@@ -1,4 +1,4 @@
-process FGBIO_FILTERCONSENSUSREADS {
+process FGBIO_CONSENSUS {
     tag "${meta.id}"
     label 'process_low'
 

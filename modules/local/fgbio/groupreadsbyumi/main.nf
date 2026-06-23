@@ -1,4 +1,4 @@
-process FGBIO_GROUPREADSBYUMI {
+process FGBIO_GROUP_UMI {
     tag "${meta.id}"
     label 'process_low'
 

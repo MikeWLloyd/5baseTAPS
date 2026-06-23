@@ -1,4 +1,4 @@
-process RASTAIR_CPG_MASK {
+process CPG_MASK {
     tag "${meta.id}"
     label 'process_low'
 

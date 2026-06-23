@@ -5,7 +5,7 @@
 */
 
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { BAM_TAPS_CONVERSION    } from '../subworkflows/nf-core/bam_taps_conversion/main'
+include { BAM_TAPS_CONVERSION as METHYLSEQ } from '../subworkflows/nf-core/bam_taps_conversion/main'
 
 // TODO: include { GATK4_HAPLOTYPECALLER } from '../modules/nf-core/gatk4/haplotypecaller/main'
 // TODO: include { TVC                   } from '../modules/local/tvc/main'
@@ -15,7 +15,7 @@ include { BAM_TAPS_CONVERSION    } from '../subworkflows/nf-core/bam_taps_conver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN DOWNSTREAM ANALYSIS WORKFLOW
     Receives the final consensus-filtered BAM from FASTQUORUM and runs:
-      - BAM_TAPS_CONVERSION  : rastair methylation calling (TAPS)
+      - METHYLSEQ  : rastair methylation calling (TAPS)
       - GATK HaplotypeCaller : variant calling            (TODO)
       - TVC (Watchmaker)     : variant calling            (TODO)
       - MultiQC              : aggregate QC report        (TODO - run last)
@@ -55,13 +55,13 @@ workflow DOWNSTREAM {
     //   rastair call   -> genome-wide methylation calls
     //   rastair methylkit -> methylKit-format output
     //
-    BAM_TAPS_CONVERSION(
+    METHYLSEQ(
         ch_taps_inputs.bam,
         ch_taps_inputs.bai,
         ch_taps_inputs.fasta,
         ch_taps_inputs.fasta_index
     )
-    ch_versions = ch_versions.mix(BAM_TAPS_CONVERSION.out.versions)
+    ch_versions = ch_versions.mix(METHYLSEQ.out.versions)
 
     // TODO: GATK4_HAPLOTYPECALLER — variant calling in parallel with rastair
     // TODO: TVC (Watchmaker)      — variant calling in parallel with rastair
@@ -88,8 +88,8 @@ workflow DOWNSTREAM {
     // )
 
     emit:
-    rastair_mbias     = BAM_TAPS_CONVERSION.out.mbias     // channel: [ val(meta), path(*.txt)    ]
-    rastair_call      = BAM_TAPS_CONVERSION.out.call      // channel: [ val(meta), path(*.txt)    ]
-    rastair_methylkit = BAM_TAPS_CONVERSION.out.methylkit // channel: [ val(meta), path(*.txt.gz) ]
+    rastair_mbias     = METHYLSEQ.out.mbias     // channel: [ val(meta), path(*.txt)    ]
+    rastair_call      = METHYLSEQ.out.call      // channel: [ val(meta), path(*.txt)    ]
+    rastair_methylkit = METHYLSEQ.out.methylkit // channel: [ val(meta), path(*.txt.gz) ]
     versions          = ch_versions
 }

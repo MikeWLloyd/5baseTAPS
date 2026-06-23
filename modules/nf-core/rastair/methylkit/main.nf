@@ -1,4 +1,4 @@
-process RASTAIR_METHYLKIT {
+process METHYLKIT {
     label 'process_single'
 
     input:

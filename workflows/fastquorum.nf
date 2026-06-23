@@ -11,7 +11,7 @@ include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_fast
 
 include { ALIGN_BAM as ALIGN_RAW_BAM    } from '../modules/local/align_bam/main'
 include { ALIGN_BAM as ALIGN_RAW_CHUNK  } from '../modules/local/align_bam/main'
-include { ALIGN_BAM as ALIGN_CONSENSUS_BAM } from '../modules/local/align_bam/main'
+include { ALIGN_BAM as ALIGN_CONS } from '../modules/local/align_bam/main'
 include { FASTQC } from '../modules/nf-core/fastqc/main'
 include { CONCAT_FASTQ as CONCAT_FASTQ_R1 } from '../modules/local/concat_fastq/main'
 include { CONCAT_FASTQ as CONCAT_FASTQ_R2 } from '../modules/local/concat_fastq/main'
@@ -19,11 +19,11 @@ include { FGBIO_FASTQTOBAM as FASTQTOBAM       } from '../modules/local/fgbio/fa
 include { FGBIO_FASTQTOBAM as FASTQTOBAM_CHUNK } from '../modules/local/fgbio/fastqtobam/main'
 include { SPLIT_FASTQ   } from '../modules/local/split_fastq/main'
 include { MERGE_CHUNKS  } from '../modules/local/merge_chunks/main'
-include { FGBIO_GROUPREADSBYUMI as GROUPREADSBYUMI } from '../modules/local/fgbio/groupreadsbyumi/main'
+include { FGBIO_GROUP_UMI as GROUP_UMI } from '../modules/local/fgbio/groupreadsbyumi/main'
 include { FGBIO_CALLMOLECULARCONSENSUSREADS as CALLMOLECULARCONSENSUSREADS } from '../modules/local/fgbio/callmolecularconsensusreads/main'
-include { FGBIO_CALLDDUPLEXCONSENSUSREADS as CALLDDUPLEXCONSENSUSREADS } from '../modules/local/fgbio/callduplexconsensusreads/main'
-include { FGBIO_FILTERCONSENSUSREADS as FILTERCONSENSUSREADS } from '../modules/local/fgbio/filterconsensusreads/main'
-include { FGBIO_COLLECTDUPLEXSEQMETRICS as COLLECTDUPLEXSEQMETRICS } from '../modules/local/fgbio/collectduplexseqmetrics/main'
+include { FGBIO_CALL_DUPLEX as CALL_DUPLEX } from '../modules/local/fgbio/callduplexconsensusreads/main'
+include { FGBIO_CONSENSUS as CONSENSUS } from '../modules/local/fgbio/filterconsensusreads/main'
+include { FGBIO_DUPLEX_QC as DUPLEX_QC } from '../modules/local/fgbio/collectduplexseqmetrics/main'
 include { FGBIO_CALLANDFILTERMOLECULARCONSENSUSREADS as CALLANDFILTERMOLECULARCONSENSUSREADS } from '../modules/local/fgbio/callandfiltermolecularconsensusreads/main'
 include { FGBIO_CALLANDFILTERDUPLEXCONSENSUSREADS as CALLANDFILTERDUPLEXCONSENSUSREADS } from '../modules/local/fgbio/callandfilterduplexconsensusreads/main'
 include { SAMTOOLS_MERGE as MERGE_BAM              } from '../modules/nf-core/samtools/merge/main'
@@ -31,7 +31,7 @@ include { SAMTOOLS_FLAGSTAT                         } from '../modules/local/sam
 include { SAMTOOLS_FLAGSTAT as PREDEDUP_FLAGSTAT    } from '../modules/local/samtools/flagstat/main'
 include { SAMTOOLS_FLAGSTAT as POSTDEDUP_FLAGSTAT   } from '../modules/local/samtools/flagstat/main'
 include { MOSDEPTH                                  } from '../modules/local/mosdepth/main'
-include { TAPS_DUPLEX_METRICS                       } from '../modules/local/taps_duplex_metrics/main'
+include { DUPLEX_MQC                       } from '../modules/local/taps_duplex_metrics/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -202,20 +202,20 @@ workflow FASTQUORUM {
     //
     def umi_strategy = params.groupreadsbyumi_strategy ?: (params.duplex_seq ? 'Paired' : 'Adjacency')
     log.info("[fgbio GroupReadsByUmi] strategy='${umi_strategy}' (duplex_seq=${params.duplex_seq})")
-    GROUPREADSBYUMI(bam_all, umi_strategy, params.groupreadsbyumi_edits)
-    ch_multiqc_files = ch_multiqc_files.mix(GROUPREADSBYUMI.out.histogram.map { it[1] }.collect())
-    ch_versions = ch_versions.mix(GROUPREADSBYUMI.out.versions.first())
+    GROUP_UMI(bam_all, umi_strategy, params.groupreadsbyumi_edits)
+    ch_multiqc_files = ch_multiqc_files.mix(GROUP_UMI.out.histogram.map { it[1] }.collect())
+    ch_versions = ch_versions.mix(GROUP_UMI.out.versions.first())
 
     if (params.duplex_seq) {
         //
         // MODULE: Run fgbio CollectDuplexSeqMetrics
         //
-        COLLECTDUPLEXSEQMETRICS(GROUPREADSBYUMI.out.bam)
-        ch_versions = ch_versions.mix(COLLECTDUPLEXSEQMETRICS.out.versions.first())
+        DUPLEX_QC(GROUP_UMI.out.bam)
+        ch_versions = ch_versions.mix(DUPLEX_QC.out.versions.first())
 
-        // TAPS_DUPLEX_METRICS is wired after ch_final_bam is set (see below),
+        // DUPLEX_MQC is wired after ch_final_bam is set (see below),
         // so we store the metrics channel here for use in the deferred join.
-        ch_collectduplex_metrics = COLLECTDUPLEXSEQMETRICS.out.metrics
+        ch_collectduplex_metrics = DUPLEX_QC.out.metrics
     }
 
     // TODO: duplex_seq can be inferred from the read structure, but that's out of scope for now
@@ -224,17 +224,17 @@ workflow FASTQUORUM {
             //
             // MODULE: Run fgbio CallDuplexConsensusReads
             //
-            CALLDDUPLEXCONSENSUSREADS(GROUPREADSBYUMI.out.bam, params.call_min_reads, params.call_min_baseq)
-            ch_versions = ch_versions.mix(CALLDDUPLEXCONSENSUSREADS.out.versions.first())
+            CALL_DUPLEX(GROUP_UMI.out.bam, params.call_min_reads, params.call_min_baseq)
+            ch_versions = ch_versions.mix(CALL_DUPLEX.out.versions.first())
 
             // Add the consensus BAM to the channel for downstream processing
-            CALLDDUPLEXCONSENSUSREADS.out.bam.set { ch_consensus_bam }
+            CALL_DUPLEX.out.bam.set { ch_consensus_bam }
         }
         else {
             //
             // MODULE: Run fgbio CallMolecularConsensusReads
             //
-            CALLMOLECULARCONSENSUSREADS(GROUPREADSBYUMI.out.bam, params.call_min_reads, params.call_min_baseq)
+            CALLMOLECULARCONSENSUSREADS(GROUP_UMI.out.bam, params.call_min_reads, params.call_min_baseq)
             ch_versions = ch_versions.mix(CALLMOLECULARCONSENSUSREADS.out.versions.first())
 
             // Add the consensus BAM to the channel for downstream processing
@@ -244,23 +244,23 @@ workflow FASTQUORUM {
         //
         // MODULE: Align with bwa mem
         //
-        ALIGN_CONSENSUS_BAM(ch_consensus_bam, ch_fasta, ch_fasta_fai, ch_dict, ch_bwamem2, "none")
-        ch_versions = ch_versions.mix(ALIGN_CONSENSUS_BAM.out.versions.first())
+        ALIGN_CONS(ch_consensus_bam, ch_fasta, ch_fasta_fai, ch_dict, ch_bwamem2, "none")
+        ch_versions = ch_versions.mix(ALIGN_CONS.out.versions.first())
 
         //
         // MODULE: Run fgbio FilterConsensusReads
         //
-        FILTERCONSENSUSREADS(ALIGN_CONSENSUS_BAM.out.bam, ch_fasta, params.filter_min_reads, params.filter_min_baseq, params.filter_max_base_error_rate)
-        ch_versions  = ch_versions.mix(FILTERCONSENSUSREADS.out.versions.first())
-        ch_final_bam = FILTERCONSENSUSREADS.out.bam
-        ch_final_bai = FILTERCONSENSUSREADS.out.bai
+        CONSENSUS(ALIGN_CONS.out.bam, ch_fasta, params.filter_min_reads, params.filter_min_baseq, params.filter_max_base_error_rate)
+        ch_versions  = ch_versions.mix(CONSENSUS.out.versions.first())
+        ch_final_bam = CONSENSUS.out.bam
+        ch_final_bai = CONSENSUS.out.bai
     }
     else {
         if (params.duplex_seq) {
             //
             // MODULE: Run fgbio CallDuplexConsensusReads and fgbio FilterConsensusReads
             //
-            CALLANDFILTERDUPLEXCONSENSUSREADS(GROUPREADSBYUMI.out.bam, ch_fasta, ch_fasta_fai, params.call_min_reads, params.call_min_baseq, params.filter_max_base_error_rate)
+            CALLANDFILTERDUPLEXCONSENSUSREADS(GROUP_UMI.out.bam, ch_fasta, ch_fasta_fai, params.call_min_reads, params.call_min_baseq, params.filter_max_base_error_rate)
             ch_versions = ch_versions.mix(CALLANDFILTERDUPLEXCONSENSUSREADS.out.versions.first())
 
             // Add the consensus BAM to the channel for downstream processing
@@ -270,7 +270,7 @@ workflow FASTQUORUM {
             //
             // MODULE: Run fgbio CallMolecularConsensusReads and fgbio FilterConsensusReads
             //
-            CALLANDFILTERMOLECULARCONSENSUSREADS(GROUPREADSBYUMI.out.bam, ch_fasta, ch_fasta_fai, params.call_min_reads, params.call_min_baseq, params.filter_max_base_error_rate)
+            CALLANDFILTERMOLECULARCONSENSUSREADS(GROUP_UMI.out.bam, ch_fasta, ch_fasta_fai, params.call_min_reads, params.call_min_baseq, params.filter_max_base_error_rate)
             ch_versions = ch_versions.mix(CALLANDFILTERMOLECULARCONSENSUSREADS.out.versions.first())
 
             // Add the consensus BAM to the channel for downstream processing
@@ -280,10 +280,10 @@ workflow FASTQUORUM {
         //
         // MODULE: Align with bwa mem
         //
-        ALIGN_CONSENSUS_BAM(ch_consensus_bam, ch_fasta, ch_fasta_fai, ch_dict, ch_bwamem2, "coordinate")
-        ch_versions  = ch_versions.mix(ALIGN_CONSENSUS_BAM.out.versions.first())
-        ch_final_bam = ALIGN_CONSENSUS_BAM.out.bam
-        ch_final_bai = ALIGN_CONSENSUS_BAM.out.bai
+        ALIGN_CONS(ch_consensus_bam, ch_fasta, ch_fasta_fai, ch_dict, ch_bwamem2, "coordinate")
+        ch_versions  = ch_versions.mix(ALIGN_CONS.out.versions.first())
+        ch_final_bam = ALIGN_CONS.out.bam
+        ch_final_bai = ALIGN_CONS.out.bai
     }
 
     //
@@ -300,18 +300,18 @@ workflow FASTQUORUM {
     ch_versions = ch_versions.mix(MOSDEPTH.out.versions.first())
 
     //
-    // MODULE: TAPS_DUPLEX_METRICS — duplex deduplication summary CSV
-    //   Only available when duplex_seq is true (requires COLLECTDUPLEXSEQMETRICS output).
+    // MODULE: DUPLEX_MQC — duplex deduplication summary CSV
+    //   Only available when duplex_seq is true (requires DUPLEX_QC output).
     //
     if (params.duplex_seq) {
         ch_duplex_in = ch_prededup_flagstat
             .join(POSTDEDUP_FLAGSTAT.out.flagstat, by: 0)
             .join(ch_collectduplex_metrics,         by: 0)
 
-        TAPS_DUPLEX_METRICS(ch_duplex_in)
-        ch_versions           = ch_versions.mix(TAPS_DUPLEX_METRICS.out.versions.first())
-        ch_multiqc_files      = ch_multiqc_files.mix(TAPS_DUPLEX_METRICS.out.mqc.map { it[1] }.flatten())
-        ch_duplex_metrics_csv = TAPS_DUPLEX_METRICS.out.mqc
+        DUPLEX_MQC(ch_duplex_in)
+        ch_versions           = ch_versions.mix(DUPLEX_MQC.out.versions.first())
+        ch_multiqc_files      = ch_multiqc_files.mix(DUPLEX_MQC.out.mqc.map { it[1] }.flatten())
+        ch_duplex_metrics_csv = DUPLEX_MQC.out.mqc
     }
 
     //

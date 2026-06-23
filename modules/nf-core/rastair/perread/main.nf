@@ -1,4 +1,4 @@
-process RASTAIR_PERREAD {
+process PERREAD {
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"

@@ -1,4 +1,4 @@
-process RASTAIR_CALL_SUMMARY {
+process METH_SUMMARY {
     label 'process_low'
 
     conda "conda-forge::python=3.11"

@@ -1,4 +1,4 @@
-process TAPS_DUPLEX_METRICS {
+process DUPLEX_MQC {
     tag "${meta.id}"
     label 'process_single'
 

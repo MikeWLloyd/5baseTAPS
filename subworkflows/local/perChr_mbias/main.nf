@@ -4,8 +4,8 @@
  * Replaces the monolithic RASTAIR_MBIAS process for samples where total CpG
  * observations exceed R's 2^31 vector-length limit.
  *
- * Stage 1  GET_CHRS → MBIAS_PER_CHR (one SLURM job per chromosome, ~15–35 GB each)
- * Stage 2  MBIAS_GATHER_RENDER (single job — loads small RDS files, renders HTML)
+ * Stage 1  GET_CHRS → MBIAS_CHR (one SLURM job per chromosome, ~15–35 GB each)
+ * Stage 2  RENDER (single job — loads small RDS files, renders HTML)
  *
  * Output: ${meta.id}.rastair_mbias.html — identical path/name to old RASTAIR_MBIAS.
  */
@@ -36,7 +36,7 @@ process GET_CHRS {
     """
 }
 
-process MBIAS_PER_CHR {
+process MBIAS_CHR {
     tag "${meta.id}_${chr}"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -70,7 +70,7 @@ process MBIAS_PER_CHR {
     """
 }
 
-process MBIAS_GATHER_RENDER {
+process RENDER {
     tag "${meta.id}"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -132,14 +132,14 @@ workflow PERCHROMOSOME_MBIAS {
         }
 
     // Stage 1: parallel per-chromosome RDS computation
-    MBIAS_PER_CHR(ch_per_chr)
+    MBIAS_CHR(ch_per_chr)
 
     // Collect all per-chr RDS files per sample, then join VCF for GC bias.
     // groupTuple emits as soon as n items arrive (signalled by the groupKey above).
     // Unwrap the GroupKey back to a plain meta map so the downstream .join(ch_vcf)
     // key comparison works — join uses equals()/hashCode() and GroupKey wraps the Map
     // rather than being one, which causes the inner join to silently produce nothing.
-    ch_gathered = MBIAS_PER_CHR.out
+    ch_gathered = MBIAS_CHR.out
         .groupTuple()
         .map { gkey, rds_list -> tuple(gkey.target, rds_list.flatten()) }
 
@@ -153,8 +153,8 @@ workflow PERCHROMOSOME_MBIAS {
         .map { meta, rds_list, vcf, fasta_path -> tuple(meta, rds_list, vcf, fasta_path) }
 
     // Stage 2: gather RDS files and render the HTML report
-    MBIAS_GATHER_RENDER(ch_render)
+    RENDER(ch_render)
 
     emit:
-    html = MBIAS_GATHER_RENDER.out.html  // channel: [ val(meta), path("*.rastair_mbias.html") ]
+    html = RENDER.out.html  // channel: [ val(meta), path("*.rastair_mbias.html") ]
 }

@@ -14,7 +14,7 @@
 */
 
 include { FASTQUORUM          } from './workflows/fastquorum'
-include { RASTAIR_METHYLSEQ   } from './workflows/rastair'
+include { RASTAIR              } from './workflows/rastair'
 include { GATK_VARIANTCALL as GATK } from './workflows/gatk_variantcall'
 include { TAPS_QC_REPORT      } from './modules/local/taps_qc_report/main'
 include { TAPS_MULTIQC        } from './modules/local/taps_multiqc/main'
@@ -179,7 +179,7 @@ workflow JAXGT_5BASE_TAPS {
     //
     // WORKFLOW: Downstream analysis — methylation calling, variant calling, QC
     //
-    RASTAIR_METHYLSEQ(
+    RASTAIR(
         FASTQUORUM.out.bam,
         FASTQUORUM.out.bai,
         fasta,
@@ -198,8 +198,8 @@ workflow JAXGT_5BASE_TAPS {
     ch_gatk_mqc_files  = Channel.empty()
 
     if (params.run_gatk) {
-        ch_cpg_mask = RASTAIR_METHYLSEQ.out.cpg_mask
-            .join(RASTAIR_METHYLSEQ.out.cpg_mask_tbi)
+        ch_cpg_mask = RASTAIR.out.cpg_mask
+            .join(RASTAIR.out.cpg_mask_tbi)
 
         GATK(
             FASTQUORUM.out.bam,
@@ -208,7 +208,7 @@ workflow JAXGT_5BASE_TAPS {
             fasta_fai,
             dict,
             ch_cpg_mask,
-            RASTAIR_METHYLSEQ.out.meth_summary,
+            RASTAIR.out.meth_summary,
         )
 
         ch_vc_metrics_csv  = GATK.out.vc_metrics_csv
@@ -223,7 +223,7 @@ workflow JAXGT_5BASE_TAPS {
     // wiring changes needed.
     //
     ch_mqc_trigger = FASTQUORUM.out.multiqc_files
-        .mix(RASTAIR_METHYLSEQ.out.multiqc_files)
+        .mix(RASTAIR.out.multiqc_files)
         .mix(ch_gatk_mqc_files)
         .collect()
 

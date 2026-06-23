@@ -1,4 +1,4 @@
-process TAPS_MAPPING_METRICS {
+process ALIGN_QC {
     tag "${meta.id}"
     label 'process_single'
 
