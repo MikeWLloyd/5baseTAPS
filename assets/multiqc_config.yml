@@ -60,6 +60,8 @@ extra_fn_clean_exts:
   # "1Mreads.filtered" after .vcf.gz is stripped. This cleans it to "1Mreads"
   # so the bcftools row merges with the mosdepth/flagstat row in General Stats.
   - ".filtered"
+  # samtools stats output suffix — strip so "sample.cons.stats" → "sample"
+  - ".cons"
   # Custom _mqc.tsv section suffixes
   - "_read_partitioning_mqc"
   - "_mapping_summary_mqc"
