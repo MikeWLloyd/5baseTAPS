@@ -95,6 +95,16 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-chart-line",
                     "description": "Enable GC/CpG/depth bias plots in the M-bias report. Requires the reference FASTA and the rastair call VCF."
+                },
+                "rastair_mbias_mem_base": {
+                    "type": "integer",
+                    "fa_icon": "fas fa-memory",
+                    "description": "Base memory (GB) for RASTAIR_MBIAS on attempt 1. Scaled up by rastair_mbias_mem_step on each retry."
+                },
+                "rastair_mbias_mem_step": {
+                    "type": "integer",
+                    "fa_icon": "fas fa-memory",
+                    "description": "Memory increment (GB) added per retry attempt for RASTAIR_MBIAS."
                 }
             }
         },
