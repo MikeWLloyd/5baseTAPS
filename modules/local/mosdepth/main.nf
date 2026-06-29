@@ -29,6 +29,13 @@ process MOSDEPTH {
         ${prefix} \\
         ${bam}
 
+    # Keep only canonical chromosomes + total row so MultiQC plots stay clean.
+    # NR==1 preserves the header line that wgs_coverage_metrics.py requires.
+    awk 'NR==1 || /^(chr[0-9XYM]+|total)\t/' ${prefix}.mosdepth.summary.txt \
+        > tmp_summary && mv tmp_summary ${prefix}.mosdepth.summary.txt
+    awk '/^(chr[0-9XYM]+|total)\t/' ${prefix}.mosdepth.global.dist.txt \
+        > tmp_dist    && mv tmp_dist    ${prefix}.mosdepth.global.dist.txt
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         mosdepth: \$(mosdepth --version 2>&1 | sed 's/mosdepth //')
