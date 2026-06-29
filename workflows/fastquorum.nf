@@ -30,6 +30,7 @@ include { SAMTOOLS_MERGE as MERGE_BAM              } from '../modules/nf-core/sa
 include { SAMTOOLS_FLAGSTAT                         } from '../modules/local/samtools/flagstat/main'
 include { SAMTOOLS_FLAGSTAT as PREDEDUP_FLAGSTAT    } from '../modules/local/samtools/flagstat/main'
 include { SAMTOOLS_FLAGSTAT as POSTDEDUP_FLAGSTAT   } from '../modules/local/samtools/flagstat/main'
+include { SAMTOOLS_STATS                            } from '../modules/local/samtools/stats/main'
 include { MOSDEPTH                                  } from '../modules/local/mosdepth/main'
 include { DUPLEX_MQC                       } from '../modules/local/taps_duplex_metrics/main'
 
@@ -291,6 +292,13 @@ workflow FASTQUORUM {
     //
     POSTDEDUP_FLAGSTAT(ch_final_bam)
     ch_versions = ch_versions.mix(POSTDEDUP_FLAGSTAT.out.versions.first())
+
+    //
+    // MODULE: samtools stats on consensus BAM (insert size distribution for MultiQC)
+    //
+    SAMTOOLS_STATS(ch_final_bam)
+    ch_versions      = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
+    ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats.map { it[1] }.collect())
 
     //
     // MODULE: mosdepth WGS coverage on consensus BAM
