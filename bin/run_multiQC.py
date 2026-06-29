@@ -216,7 +216,7 @@ def run_multiqc(outdir, mqc_outdir, multiqc_bin, dry_run):
     cmd = multiqc_cmd_prefix + [
         str(outdir),       # single dir — searches recursively for *_mqc.tsv, flagstat, mosdepth, etc.
         "--outdir", str(multiqc_outdir),
-        "--filename", "multiqc_report",
+        "--filename", "5-baseTAPS_multiqc_report",
         "--force",
     ] + config_args + logo_args
 
@@ -226,7 +226,7 @@ def run_multiqc(outdir, mqc_outdir, multiqc_bin, dry_run):
     print(f"\nRunning MultiQC...")
     try:
         subprocess.run(cmd, check=True)
-        report = multiqc_outdir / "multiqc_report.html"
+        report = multiqc_outdir / "5-baseTAPS_multiqc_report.html"
         print(f"\nReport: {report}")
     except subprocess.CalledProcessError as e:
         print(f"[FAIL] MultiQC exited with {e.returncode}")
