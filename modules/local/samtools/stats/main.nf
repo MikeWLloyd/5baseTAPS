@@ -20,12 +20,14 @@ process SAMTOOLS_STATS {
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    samtools stats \\
+    samtools view \\
+        -h \\
         -F 0x900 \\
         -f 0x2 \\
-        -q 30 \\
+        -q 20 \\
         --threads ${task.cpus} \\
         ${bam} \\
+    | samtools stats - \\
         > ${prefix}.cons.stats
 
     cat <<-END_VERSIONS > versions.yml

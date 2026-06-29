@@ -152,3 +152,8 @@ fn_ignore_files:
   - "*.postdedup.flagstat"
   - "*.lambda_negCtrl.flagstat"
   - "*.puc19_posCtrl.flagstat"
+
+# ── Hide samtools_stats Alignment Scores bar chart ────────────────────────────
+# With MAPQ≥20 pre-filtering, MQ0=0 for every sample — the bar is uninformative.
+remove_sections:
+  - samtools-stats-alignment
