@@ -17,7 +17,7 @@ A Nextflow pipeline for whole-genome cytosine methylation and SNP variant callin
 **Illumina 5-base** and **TAPS Watchmaker** duplex UMI sequencing data.
 
 Built at [The Jackson Laboratory](https://www.jax.org/) Genome Technologies core, extending
-[nf-core/fastquorum](https://nf-co.re/fastquorum) with rastair methylation calling and GATK
+[nf-core/fastquorum](https://nf-co.re/fastquorum) with rastair methylation-aware CpG methylation and SNP calling, and GATK
 HaplotypeCaller variant calling.
 
 ---
@@ -39,7 +39,7 @@ to run a single analysis path regardless of library chemistry.
 4. Duplex consensus calling and filtering ([fgbio CallDuplexConsensusReads](http://fulcrumgenomics.github.io/fgbio/tools/latest/CallDuplexConsensusReads.html), [FilterConsensusReads](http://fulcrumgenomics.github.io/fgbio/tools/latest/FilterConsensusReads.html))
 5. Duplex QC metrics ([fgbio CollectDuplexSeqMetrics](http://fulcrumgenomics.github.io/fgbio/tools/latest/CollectDuplexSeqMetrics.html))
 6. Final consensus re-alignment ([bwa-mem2](https://github.com/bwa-mem2/bwa-mem2))
-7. CpG methylation calling + per-CpG BED/VCF + per-read BED ([rastair](https://www.rastair.com/))
+7. Methylation-aware CpG methylation + SNP calling + per-CpG BED/VCF + per-read BED ([rastair](https://www.rastair.com/))
 8. M-bias QC report ([rastair](https://www.rastair.com/))
 9. Lambda (negative) and pUC19 (positive) methylation control QC
 10. CpG site mask generation for GATK (derived from the rastair call BED)

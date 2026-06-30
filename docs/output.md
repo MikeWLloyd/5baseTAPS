@@ -9,7 +9,7 @@ JAX Genome Technologies offers sequencing and secondary analysis services for wh
 
 Although the two library types use distinct chemistries, both produce reads with the same base-level methylation signature: 5-methylcytosine (5mC) appears as thymine (C→T) while unmethylated cytosines are read as C. This shared read-level representation is why the same downstream bioinformatics pipeline can process data from either library type without modification.
 
-The JAX-GT Nextflow pipeline integrates frameworks from [nf-core/fastquorum](https://nf-co.re/fastquorum) and [fgbio](http://fulcrumgenomics.github.io/fgbio/) for UMI-based duplex consensus calling, [bwa-mem2](https://github.com/bwa-mem2/bwa-mem2) for genome alignment, [rastair](https://www.rastair.com/) for CpG methylation calling, and [GATK HaplotypeCaller](https://gatk.broadinstitute.org) in DRAGEN mode for germline SNP/INDEL calling.
+The JAX-GT Nextflow pipeline integrates frameworks from [nf-core/fastquorum](https://nf-co.re/fastquorum) and [fgbio](http://fulcrumgenomics.github.io/fgbio/) for UMI-based duplex consensus calling, [bwa-mem2](https://github.com/bwa-mem2/bwa-mem2) for genome alignment, [rastair](https://www.rastair.com/) for methylation-aware CpG methylation and SNP calling, and [GATK HaplotypeCaller](https://gatk.broadinstitute.org) in DRAGEN mode for germline SNP/INDEL calling.
 
 **Main Steps:**
 1. Preprocessing: raw read quality (FastQC), alignment to reference genome (bwa-mem2), multi-lane merging.
