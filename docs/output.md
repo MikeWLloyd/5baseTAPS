@@ -37,9 +37,9 @@ Available via [iGenomes](https://nf-co.re/docs/usage/reference_genomes) (downloa
 ```
 $OUTDIR/
     ├── report/
-    │   ├── multiqc_report.html                            ← Start here
-    │   ├── multiqc_report_data/
-    │   └── multiqc_report_plots/
+    │   ├── 5-baseTAPS_multiqc_report.html                 ← Start here
+    │   ├── 5-baseTAPS_multiqc_report_data/
+    │   └── 5-baseTAPS_multiqc_report_plots/
     ├── <sample>/
     │   ├── bam/
     │   │   ├── <sample>.cons.filtered.bam                 ← Primary BAM
@@ -73,7 +73,8 @@ $OUTDIR/
     │       │   ├── <sample>.prededup.flagstat
     │       │   ├── <sample>.postdedup.flagstat
     │       │   ├── <sample>.lambda_negCtrl.flagstat
-    │       │   └── <sample>.puc19_posCtrl.flagstat
+    │       │   ├── <sample>.puc19_posCtrl.flagstat
+    │       │   └── <sample>.cons.stats
     │       ├── coverage/
     │       │   ├── <sample>.mosdepth.summary.txt
     │       │   └── <sample>.mosdepth.global.dist.txt
@@ -337,7 +338,7 @@ These files are used to estimate TAPS conversion efficiency and validate assay p
 
 | File | Description |
 | :--- | :--- |
-| **`report/multiqc_report.html`** | Integrated QC report — start here ([interpretation guide](./interpret_multiqc.md)) |
+| **`report/5-baseTAPS_multiqc_report.html`** | Integrated QC report — start here ([interpretation guide](./interpret_multiqc.md)) |
 | **`<s>/qc/alignment/<s>.postdedup.flagstat`** | Samtools flagstat on final consensus BAM |
 | **`<s>/qc/alignment/<s>.prededup.flagstat`** | Samtools flagstat before UMI deduplication |
 | **`<s>/qc/alignment/<s>.lambda_negCtrl.flagstat`** | Flagstat for lambda spike-in reads |
@@ -489,7 +490,8 @@ Three curves (CS, DS, SS) plotted as **total reads allocated to families of size
 | `<s>.duplex_seq_metrics.duplex_qc.pdf` | `<s>/qc/duplex/` | fgbio duplex QC summary PDF |
 | `<s>.bcftools_stats.txt` | `<s>/qc/variant_call/` | bcftools stats on PASS SNP VCF (Ti/Tv, SNP/INDEL counts, quality) |
 | `<s>.dragstr_model.txt` | `<s>/qc/variant_call/` | DRAGEN STR model calibration file (CalibrateDragstrModel) |
-| `multiqc_report.html` | `report/` | **Integrated QC report** — mapping, duplex, methylation, coverage, variants |
+| `<s>.cons.stats` | `<s>/qc/alignment/` | Samtools stats on final consensus BAM (MAPQ ≥ 20; insert size distribution for MultiQC) |
+| `5-baseTAPS_multiqc_report.html` | `report/` | **Integrated QC report** — mapping, duplex, methylation, coverage, variants |
 
 NOTE: `<s>` is a placeholder for the sample ID.
 
