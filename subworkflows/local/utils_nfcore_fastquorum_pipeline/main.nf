@@ -91,7 +91,7 @@ workflow PIPELINE_INITIALISATION {
             // independently up through mapping, then merge them prior to grouping by UMI.
             // Add a lane index so multi-lane chunk BAMs get unique filenames (prevents MERGE_CHUNKS collision).
             fastqs.withIndex().collect { fastq, lane_idx ->
-                [[*:meta, lane: lane_idx], fastq]
+                [meta + [lane: lane_idx], fastq]
             }
         }
         .set { ch_samplesheet }

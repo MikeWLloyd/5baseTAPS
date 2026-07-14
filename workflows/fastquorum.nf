@@ -112,7 +112,7 @@ workflow FASTQUORUM {
                 def r1s = r1_list instanceof List ? r1_list : [r1_list]
                 def r2s = r2_list instanceof List ? r2_list : [r2_list]
                 [r1s, r2s].transpose().withIndex().collect { pair, idx ->
-                    [[*:meta, chunk: idx], pair]
+                    [meta + [chunk: idx], pair]
                 }
             }
 

@@ -31,36 +31,6 @@ include { SAMTOOLS_DICT  } from './modules/nf-core/samtools/dict/main'
 */
 include { getGenomeAttribute } from './subworkflows/local/utils_nfcore_fastquorum_pipeline'
 
-if (!params.fasta     && getGenomeAttribute('fasta'))     params.replace('fasta',     getGenomeAttribute('fasta'))
-if (!params.fasta_fai && getGenomeAttribute('fasta_fai')) params.replace('fasta_fai', getGenomeAttribute('fasta_fai'))
-if (!params.dict      && getGenomeAttribute('dict'))      params.replace('dict',      getGenomeAttribute('dict'))
-if (!params.bwamem2   && getGenomeAttribute('bwamem2'))   params.replace('bwamem2',   getGenomeAttribute('bwamem2'))
-
-// If --fasta was explicitly provided and differs from the genome config's fasta,
-// genome-derived indexes won't match — null them so they get rebuilt.
-if (params.fasta && getGenomeAttribute('fasta') && params.fasta != getGenomeAttribute('fasta')) {
-    params.replace('fasta_fai', null)
-    params.replace('dict',      null)
-    params.replace('bwamem2',   null)
-}
-
-// Reset to null if local index files no longer exist; triggers rebuild from FASTA.
-if (params.fasta_fai && !file(params.fasta_fai).exists()) {
-    log.warn "fasta_fai not found at ${params.fasta_fai} — will rebuild from FASTA"
-    params.replace('fasta_fai', null)
-}
-if (params.dict && !file(params.dict).exists()) {
-    log.warn "dict not found at ${params.dict} — will rebuild from FASTA"
-    params.replace('dict', null)
-}
-if (params.bwamem2) {
-    def bwa_dir = file(params.bwamem2)
-    if (!bwa_dir.exists() || bwa_dir.list()?.size() == 0) {
-        log.warn "bwamem2 index not found or empty at ${params.bwamem2} — will rebuild from FASTA"
-        params.replace('bwamem2', null)
-    }
-}
-
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -71,6 +41,40 @@ if (params.bwamem2) {
 // WORKFLOW: Run main analysis pipeline depending on type of input
 //
 workflow {
+    // Populate genome params from the genome config when not explicitly provided.
+    // Must run before any subworkflow that reads params.fasta / params.bwamem2.
+    // (Moved here from top-level for v2 parser compliance — statements must be
+    //  inside a workflow, process, or function.)
+    if (!params.fasta     && getGenomeAttribute('fasta'))     params.replace('fasta',     getGenomeAttribute('fasta'))
+    if (!params.fasta_fai && getGenomeAttribute('fasta_fai')) params.replace('fasta_fai', getGenomeAttribute('fasta_fai'))
+    if (!params.dict      && getGenomeAttribute('dict'))      params.replace('dict',      getGenomeAttribute('dict'))
+    if (!params.bwamem2   && getGenomeAttribute('bwamem2'))   params.replace('bwamem2',   getGenomeAttribute('bwamem2'))
+
+    // If --fasta was explicitly provided and differs from the genome config's fasta,
+    // genome-derived indexes won't match — null them so they get rebuilt.
+    if (params.fasta && getGenomeAttribute('fasta') && params.fasta != getGenomeAttribute('fasta')) {
+        params.replace('fasta_fai', null)
+        params.replace('dict',      null)
+        params.replace('bwamem2',   null)
+    }
+
+    // Reset to null if local index files no longer exist; triggers rebuild from FASTA.
+    if (params.fasta_fai && !file(params.fasta_fai).exists()) {
+        log.warn "fasta_fai not found at ${params.fasta_fai} — will rebuild from FASTA"
+        params.replace('fasta_fai', null)
+    }
+    if (params.dict && !file(params.dict).exists()) {
+        log.warn "dict not found at ${params.dict} — will rebuild from FASTA"
+        params.replace('dict', null)
+    }
+    if (params.bwamem2) {
+        def bwa_dir = file(params.bwamem2)
+        if (!bwa_dir.exists() || bwa_dir.list()?.size() == 0) {
+            log.warn "bwamem2 index not found or empty at ${params.bwamem2} — will rebuild from FASTA"
+            params.replace('bwamem2', null)
+        }
+    }
+
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
