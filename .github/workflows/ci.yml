@@ -1,0 +1,41 @@
+name: JAX-GT/5baseTAPS CI
+on:
+  push:
+    branches:
+      - "dev"
+  pull_request:
+    branches:
+      - "dev"
+      - "master"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  NXF_ANSI_LOG: false
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  config-validate:
+    name: "Validate pipeline config syntax (${{ matrix.NXF_VER }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        NXF_VER:
+          - "latest-everything"
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Set up Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "${{ matrix.NXF_VER }}"
+
+      - name: Validate Nextflow config syntax
+        run: |
+          nextflow config .

@@ -1,0 +1,39 @@
+name: Branch protection
+on:
+  pull_request_target:
+    branches:
+      - main
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PRs
+        if: github.repository == 'TheJacksonLaboratory/5baseTAPS'
+        run: |
+          { [[ ${{github.event.pull_request.head.repo.full_name }} == TheJacksonLaboratory/5baseTAPS ]] && [[ $GITHUB_HEAD_REF == "dev" ]]; } || [[ $GITHUB_HEAD_REF == "patch" ]]
+
+      - name: Post PR comment
+        if: failure()
+        uses: mshick/add-pr-comment@b8f338c590a895d50bcbfa6c5859251edc8952fc # v2
+        with:
+          message: |
+            ## This PR is against the `${{github.event.pull_request.base.ref}}` branch :x:
+
+            * Do not close this PR
+            * Click _Edit_ and change the `base` to `dev`
+            * This CI test will remain failed until you push a new commit
+
+            ---
+
+            Hi @${{ github.event.pull_request.user.login }},
+
+            It looks like this pull-request has been made against the `${{github.event.pull_request.base.ref}}` branch of [TheJacksonLaboratory/5baseTAPS](https://github.com/TheJacksonLaboratory/5baseTAPS).
+            The `master` branch should always contain code from the latest release.
+            PRs to `master` are only allowed from the `dev` branch.
+
+            You do not need to close this PR — change the target branch to `dev` by clicking _"Edit"_ at the top of this page.
+            Note that this check will remain failing until you push a new commit.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: false
