@@ -47,7 +47,7 @@ process MBIAS_CHR {
 
     script:
     def vbias_flag = params.plot_vbias ? "--vbias" : ""
-    def assets     = params.rastair_rscript_dir ?: "${workflow.projectDir}/assets/rastair_scripts"
+    def assets     = params.rastair_rscript_dir ?: "${workflow.projectDir}/bin/rastair_scripts"
     """
     Rscript ${assets}/perChr_mbias_chr.R \\
         --bed          ${bgz} \\
@@ -79,7 +79,7 @@ process RENDER {
 
     script:
     def prefix     = meta.id
-    def assets     = params.rastair_rscript_dir ?: "${workflow.projectDir}/assets/rastair_scripts"
+    def assets     = params.rastair_rscript_dir ?: "${workflow.projectDir}/bin/rastair_scripts"
     def vbias_flag = params.plot_vbias ? "--vbias" : ""
     def gc_flags   = params.plot_gc
         ? "--gc --vcf \$(realpath ${vcf}) --reference ${fasta_path} --bcftools bcftools"
