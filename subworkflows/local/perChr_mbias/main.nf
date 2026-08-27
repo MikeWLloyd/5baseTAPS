@@ -13,9 +13,7 @@
 process GET_CHRS {
     tag "${meta.id}"
 
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://sbludwig/rastair:version-2.1.1' :
-        'sbludwig/rastair:version-2.1.1' }"
+    container 'docker://sbludwig/rastair:version-2.1.1'
 
     input:
     tuple val(meta), path(bgz), path(tbi)
@@ -39,9 +37,7 @@ process GET_CHRS {
 process MBIAS_CHR {
     tag "${meta.id}_${chr}"
 
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://sbludwig/rastair:version-2.1.1' :
-        'sbludwig/rastair:version-2.1.1' }"
+    container 'docker://sbludwig/rastair:version-2.1.1'
 
     input:
     tuple val(meta), path(bgz), path(tbi), val(chr)
@@ -73,9 +69,7 @@ process MBIAS_CHR {
 process RENDER {
     tag "${meta.id}"
 
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://sbludwig/rastair:version-2.1.1' :
-        'sbludwig/rastair:version-2.1.1' }"
+    container 'docker://sbludwig/rastair:version-2.1.1'
 
     input:
     tuple val(meta), path(rds_files), path(vcf), val(fasta_path)
