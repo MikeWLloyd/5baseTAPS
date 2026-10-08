@@ -11,6 +11,8 @@ process TAPS_MULTIQC {
     val(trigger)   // ordering trigger — collects upstream channel items to ensure all
                    // publishDir writes are complete before this process runs
     val(genome)    // reference genome name for methylation column label (e.g. CHM13, GRCh38)
+    path multiqc_config
+    path multiqc_logo
 
     output:
     path "5-baseTAPS_multiqc_report.html", emit: report
@@ -28,7 +30,9 @@ process TAPS_MULTIQC {
         ${abs_outdir} \\
         --genome "${genome}" \\
         --mqc-outdir ./mqc_work \\
-        --multiqc multiqc
+        --multiqc multiqc \\
+        --config ${multiqc_config} \\
+        --logo ${multiqc_logo}
 
     cp    ${abs_outdir}/report/5-baseTAPS_multiqc_report.html .
     cp -r ${abs_outdir}/report/5-baseTAPS_multiqc_report_data/ .

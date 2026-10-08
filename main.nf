@@ -229,6 +229,8 @@ workflow JAXGT_5BASETAPS {
     TAPS_MULTIQC(
         ch_mqc_trigger,
         Channel.value(params.genome ?: "Sample"),
+        file("${projectDir}/assets/multiqc_config.yml"),
+        file("${projectDir}/assets/JAX_logo_rgb_transparentback.png"),
     )
 
     emit:
