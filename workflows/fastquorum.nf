@@ -156,7 +156,6 @@ workflow FASTQUORUM {
     //
     SAMTOOLS_FLAGSTAT(ch_raw_bam)
     ch_versions      = ch_versions.mix(SAMTOOLS_FLAGSTAT.out.versions.first())
-    ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_FLAGSTAT.out.flagstat.map { it[1] }.collect())
 
     //
     // Create a channel that:
