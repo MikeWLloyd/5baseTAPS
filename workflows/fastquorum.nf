@@ -193,6 +193,7 @@ workflow FASTQUORUM {
     //
     PREDEDUP_FLAGSTAT(bam_all)
     ch_versions          = ch_versions.mix(PREDEDUP_FLAGSTAT.out.versions.first())
+    ch_multiqc_files     = ch_multiqc_files.mix(PREDEDUP_FLAGSTAT.out.flagstat.map { it[1] }.collect())
     ch_prededup_flagstat = PREDEDUP_FLAGSTAT.out.flagstat
 
     //
@@ -286,6 +287,7 @@ workflow FASTQUORUM {
     //
     POSTDEDUP_FLAGSTAT(ch_final_bam)
     ch_versions = ch_versions.mix(POSTDEDUP_FLAGSTAT.out.versions.first())
+    ch_multiqc_files = ch_multiqc_files.mix(POSTDEDUP_FLAGSTAT.out.flagstat.map { it[1] }.collect())
 
     //
     // MODULE: samtools stats on consensus BAM (insert size distribution for MultiQC)
@@ -300,6 +302,8 @@ workflow FASTQUORUM {
     ch_mosdepth_in = ch_final_bam.join(ch_final_bai)
     MOSDEPTH(ch_mosdepth_in)
     ch_versions = ch_versions.mix(MOSDEPTH.out.versions.first())
+    ch_multiqc_files = ch_multiqc_files.mix(MOSDEPTH.out.summary.map { it[1] }.collect())
+    ch_multiqc_files = ch_multiqc_files.mix(MOSDEPTH.out.global_dist.map { it[1] }.collect())
 
     //
     // MODULE: DUPLEX_MQC — duplex deduplication summary CSV
