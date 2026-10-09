@@ -99,11 +99,11 @@ workflow FASTQUORUM {
     // FASTQ → unmapped BAM → raw aligned BAM (TC-sorted, per lane)
     // Branch: split-align-merge vs original single-task path
     //
-    if (params.align_raw_bam_chunks > 1) {
+    if ((params.align_raw_bam_chunks as Integer) > 1) {
         //
         // Split each FASTQ pair into N chunks, align in parallel, TC-sort merge
         //
-        SPLIT_FASTQ(ch_samplesheet, params.align_raw_bam_chunks)
+        SPLIT_FASTQ(ch_samplesheet, params.align_raw_bam_chunks as Integer)
         ch_versions = ch_versions.mix(SPLIT_FASTQ.out.versions.first())
 
         // Flatten N chunk pairs into individual channel items: [meta_with_chunk, [R1_chunk, R2_chunk]]
